@@ -326,6 +326,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     opt_strip=True   #True: normal simulation, False: mese-simulations
     if opt_strip or kaista is None:
         fr = 1 ; to = -1; frw = 1; tow  = -1        
+    """
     else:
         if kaista == 3:
             fr = int(n/2-3) ; to = int(n/2+3)
@@ -333,11 +334,11 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             
         else: 
             fr = 2 ; to = 7; frw = 2; tow  = 3        
-        
+      
         dwt_loc = np.mean(np.median(dwts[r, -245:-62,:], axis = 0)[frw:tow])
         cb = np.mean(c_bals[:,fr:to])
         cbt= np.mean(c_bals_trees[:, fr:to])
-    
+    """
     #Change yield volumes to standing volumes
     
     end_vols = yiToVol(end_vols) 
@@ -368,38 +369,6 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     annual_runoff = np.sum(runoff, axis = 1)*1000. /yrs
     drunoff = [annual_runoff[k] - annual_runoff[0] for k in range(rounds)]
 
-    mese_single = False
-    mese_multiple = True
-    vesitase=False
-    generic_run = False
-    gui = False
-    if gui:
-        return v[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs
-        #        dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs
-    if vesitase:  #-1  #0 for mese, -1 for vesitase
-        #This output when single scenario is computed
-        #return (vol[0], v_end, gr/yrs, cbt/yrs, dcbt/yrs, cb/yrs, dcb/yrs, w, \
-        #        dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
-        #        np.mean(np.array(potential_gr)), np.mean(np.array(phys_restr)),np.mean(np.array(chem_restr)))
-        print ('1111111111111111111111')
-       
-        return (vol[0], v_end, np.mean((v_end-vol[0]))/yrs, cbt/yrs, dcbt/yrs, cb/yrs, dcb/yrs, w, \
-                dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
-                np.mean(np.array(potential_gr)), np.mean(np.array(phys_restr)),np.mean(np.array(chem_restr)),
-                np.mean(Nleach)/yrs, np.mean(Pleach)/yrs, np.mean(Kleach)/yrs, np.mean(DOCleach)/yrs, annual_runoff)
-                
-    if mese_single:    
-        return (vol[0], np.mean(v[fr:to]), np.mean((v-vol[0])[fr:to])/yrs,  np.mean(Nrelease[fr:to]), 
-                np.mean(Prelease[fr:to]), np.mean(Krelease[fr:to]), np.mean(Crelease[fr:to])/yrs, dwt_loc, 
-                cb/yrs, cbt/yrs,annual_runoff, drunoff, w, dw, dv)
-
-    if mese_multiple:
-        return (vol[0], v_end, gr, w, dw, dv)
-        
-    if generic_run:   
-        return (vol[0], v_end, (v_end-vol[0])/yrs,  Nrelease[fr:to], 
-                Prelease[fr:to], Krelease[fr:to], Crelease[fr:to]/yrs, dwt_loc, cb/yrs, 
-                cbt/yrs, annual_runoff, drunoff, w, dw, dv)
-       
-
-          
+    
+    return v[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
+                    Nleach, Pleach, Kleach, DOCleach, runoff

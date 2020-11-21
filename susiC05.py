@@ -576,7 +576,8 @@ class Ui_MainWindowSusi(object):
         #                mottifile=mottifile, peat= 'other', photosite='All data', 
         #                folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=self.spara[site]['sfc'], susiPath=susiPath, kaista=kaista)
 
-        v_ini, v, iv, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bmgr = run_susi(forc, wpara, cpara, 
+        v_ini, v, iv, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bmgr,Nleach, \
+                        Pleach, Kleach, DOCleach, runoff = run_susi(forc, wpara, cpara, 
                         org_para, self.spara[site], self.outpara, photopara, syr, eyr, wlocation = 'undefined', 
                         mottifile=mottifile, peat= 'other', photosite='All data', 
                         folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=self.spara[site]['sfc'], susiPath=susiPath, kaista=kaista)

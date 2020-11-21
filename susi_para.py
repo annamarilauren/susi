@@ -139,7 +139,7 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'vonP': True,
         'vonP top':  [2,2,2,3,4,5,6,6], 
         'vonP bottom': 8,
-        'bd top':[bd, bd, bd, bd, bd, bd], 'bd bottom': 0.16,
+        'bd top':None, 'bd bottom': 0.16,
         'peatN':peatN, 'peatP':peatP, 'peatK':peatK,
         'depoN': 4.0, 'depoP':0.1, 'depoK':1.0
          },  
