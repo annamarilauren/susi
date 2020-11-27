@@ -467,27 +467,37 @@ def get_mese_scen(ifile):
     return df
 
 
-def get_motti(ifile, return_spe = False):
+def get_motti(infile: str, return_species = False, file_type = 'xls'):
     #---read the Motti-simulation to be used as a basis for the Susi-simulation
 
-    cnames=['yr', 'age', 'N', 'BA', 'Hg', 'Dg', 'hdom', 'vol', 'logs', 'pulp', 'loss', 'yield','mortality', 
-            'stempulp', 'stemloss', 'branch_living', 'branch_dead', 'leaves', 'stump', 'roots_coarse', 'roots_fine']
-    df = pd.read_excel(ifile, sheet_name=0, usecols=range(22), skiprows=1, header=None )
-    df = df.drop([0], axis=1)
-    df.columns=cnames
+    cnames = ['yr', 'age', 'N', 'BA', 'Hg', 'Dg', 'hdom', 'vol', 'logs', 'pulp', 'loss', 'yield', 'mortality', 
+              'stempulp', 'stemloss', 'branch_living', 'branch_dead', 'leaves', 'stump', 'roots_coarse', 'roots_fine']
+    if file_type == 'xls':
+        df = pd.read_excel(infile, sheet_name=0, usecols=range(22), skiprows=1, header=None )
+        df = df.drop([0], axis=1)
+        if return_species:
+            cname_species = ['idSpe']
+            df2 = pd.read_excel(infile, sheet_name=1, usecols=[4], skiprows=1, header=None )
+            df2.columns = cname_species
+            species = df2['idSpe'][0]
+    elif file_type == 'csv':
+        print('reading csv ' + infile)
+        ## todo: make this
+    else:
+        print('error: get_motti received file_type other than xls or csv')
+        return None
+            
+    df.columns = cnames
 
-    cname=['idSpe']
-    df2 = pd.read_excel(ifile, sheet_name=1, usecols=[4], skiprows=1, header=None )
-    df2.columns = cname
-    
     #---- find thinnings and add a small time to lines with the age to enable interpolation---------
-    df = df[df['age']!=0]    
+    df = df[df['age']!=0] ## appears twice
     df = df[df['age']!=0]    
     steps = np.array(np.diff(df['age']), dtype=float)
     idx = np.ravel(np.argwhere(steps<1.))+1
-    df['age'][idx]=df['age'][idx]+5./365.
-    if return_spe: 
-        return df, df2['idSpe'][0]
+    df['age'][idx] = df['age'][idx]+5./365. ## fix
+
+    if return_species:
+        return df, species
     else:
         return df
 
