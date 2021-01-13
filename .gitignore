@@ -2,3 +2,10 @@
 *.png
 *.jpg
 *.7z
+*.xls
+*.xlsx
+motti*/
+outputs*/
+weather/
+inputs*/
+.spyproject/
