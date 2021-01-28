@@ -667,8 +667,8 @@ def motti_development(spara, a_arr, ifile):
     ageToBa = interp1d(x,ba,fill_value='extrapolate')
     
     #--- create interpolation functions to follow the Motti-defined framework of forest development
-    x = np.insert(df['logs'].values, 0, 0.)   
-    volToLogs = interp1d(v,x,fill_value='extrapolate')
+    logs = np.insert(df['logs'].values, 0, 0.)   # name changed to 'logs', because later 'x' refers to age in ageToStems etc.
+    volToLogs = interp1d(v,logs,fill_value='extrapolate')
 
     p = np.insert(df['pulp'].values, 0, 0.)   
     volToPulp = interp1d(v,p,fill_value='extrapolate')
