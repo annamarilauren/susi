@@ -13,6 +13,7 @@ import matplotlib.pylab as plt
 import pickle
 from scipy.misc import derivative
 from scipy.interpolate import InterpolatedUnivariateSpline as interS
+from pyproj import Proj, transform
 
 
 
@@ -96,7 +97,7 @@ def CWTr(nLyrs, z, dz, pF, Ksat, direction='positive'):
     dz =np.array(dz)
     nroot = 8   # 8 good number of layers in rooting zone
     #nroot =10      #for jääli simulations
-    nroot2 = 2  #2 10 cm root layers for air-filled porosity
+    nroot2 = 3  #2 10 cm root layers for air-filled porosity
 
     #--------- Connection between gwl and water storage------------
     d = 6 if direction == 'positive' else -6   
@@ -503,8 +504,8 @@ def nut_to_vol(vol_ini, Nrel,Prel,Krel,litter_mass, gvNup, gvPup, gvKup, leafmas
     Output
         volN, volP, volK - new volumes allowed by nutrient release 
     """
-    gvshare = np.mean(gv_leafmass / (leafmass + gv_leafmass))     #maximum share of ground vegetation from the nutrient uptake -> shared in proportion of green biomass
-    littershare = (1.0-gvshare)/2.                                #maximum share of nutrient supply allocated for litter
+    gvshare = np.mean(gv_leafmass / (leafmass + gv_leafmass))     # maximum share of ground vegetation from the nutrient uptake -> shared in proportion of green biomass
+    littershare = (1.0-gvshare)/2.                                # maximum share of nutrient supply allocated for litter
     
     MarjoNut = lambda vol, lna, b, k: np.exp(lna + b*np.log(vol) + k)
     MarjoBck = lambda nut, lna, b, k: np.exp((np.log(nut)-lna-k)/b)
@@ -647,7 +648,9 @@ def motti_development(spara, a_arr, ifile):
     retrans = {'N': 0.69, 'P': 0.73, 'K':0.8}     #Nieminen Helmisaari 1996 Tree Phys
     #longevityLeaves = {'Pine':4., 'Spruce':5., 'Birch':1.} #yrs, life span of leaves and fine roots        
     longevityLeaves = {'Pine':3., 'Spruce':4., 'Birch':1.} #yrs, life span of leaves and fine roots    
-    longevityFineRoots ={'Pine':1., 'Spruce':1., 'Birch':1.}    
+    longevityFineRoots ={'Pine':1., 'Spruce':1., 'Birch':1.}    #Yuan & Chen 2010, turnover 1.07 times per year    
+    longevityBranch ={'Pine':22., 'Spruce':22., 'Birch':22.}   #Pine Mäkinen 1999
+    
     #---create interpolation functions to follow the Motti-defined framework of forest development
     x = np.insert(df['age'].values, 0, 0.)
     h = np.insert(df['hdom'].values, 0, 0.)
@@ -667,7 +670,7 @@ def motti_development(spara, a_arr, ifile):
     ageToBa = interp1d(x,ba,fill_value='extrapolate')
     
     #--- create interpolation functions to follow the Motti-defined framework of forest development
-    logs = np.insert(df['logs'].values, 0, 0.)   # name changed to 'logs', because later 'x' refers to age in ageToStems etc.
+    logs = np.insert(df['logs'].values, 0, 0.)   
     volToLogs = interp1d(v,logs,fill_value='extrapolate')
 
     p = np.insert(df['pulp'].values, 0, 0.)   
@@ -680,10 +683,13 @@ def motti_development(spara, a_arr, ifile):
     bm = np.insert(bm, 0, 0.)
     ageToBm = interp1d(x,bm, fill_value='extrapolate')
     bmToYi= interp1d(bm,yi, fill_value='extrapolate')
+    bmToBa= interp1d(bm,ba, fill_value='extrapolate')
+    
     yiToVol = interp1d(yi,v, fill_value='extrapolate')
     
     lmass =  np.insert(df['leaves'].values, 0, 0.)  #tn / ha
     bmToLeafMass = interp1d(bm, lmass, fill_value='extrapolate')
+    bmToLAI = interp1d(bm, lmass* sla[spe]/10., fill_value='extrapolate')
     bmToHdom = interp1d(bm,h, fill_value='extrapolate')
     yiToBm = interp1d(yi, bm, fill_value='extrapolate')
     stems = np.insert(df['N'].values, 0, df['N'].values[0] )
@@ -712,12 +718,15 @@ def motti_development(spara, a_arr, ifile):
     bmFineRoots = (df['roots_fine'].values)*1000.
     bmLeaves=np.insert(bmLeaves, 0, 0.)
     bmFineRoots=np.insert(bmFineRoots, 0, 0.)
+    bmBranch = (df['branch_living'].values)*1000.
+    bmBranch=np.insert(bmBranch, 0,0.)
     
     ageToLeaves=interp1d(x, bmLeaves, fill_value ='extrapolate')
     ageToFineRoots=interp1d(x, bmFineRoots, fill_value ='extrapolate')
-    
+    ageToBranch=interp1d(x, bmBranch, fill_value ='extrapolate')
     litter = ageToLeaves(a_arr)/longevityLeaves[spe]*np.gradient(a_arr) + \
-             ageToFineRoots(a_arr)/longevityFineRoots[spe]*np.gradient(a_arr)#Litterfall kg/ha in timestep
+             ageToFineRoots(a_arr)/longevityFineRoots[spe]*np.gradient(a_arr) + \
+                 ageToBranch(a_arr)/longevityBranch[spe]*np.gradient(a_arr)    #Litterfall kg/ha in timestep
     litter2 = litter.copy()
     litter2 = np.insert(litter2, 0, 0.)
     bm2 = ageToBm(a_arr)
@@ -751,7 +760,7 @@ def motti_development(spara, a_arr, ifile):
 
 
     return ageToHdom(a_arr), ageToLAI(a_arr), ageToVol(a_arr), ageToYield(a_arr), ageToBm(a_arr), ageToBa(a_arr), \
-            ageToStems(a_arr), bmToLeafMass, bmToHdom, bmToYi, yiToVol, yiToBm, ageToVol, bmToLitter, bmToStems, volToLogs, \
+            ageToStems(a_arr), bmToLeafMass, bmToLAI, bmToHdom, bmToYi, bmToBa, yiToVol, yiToBm, ageToVol, bmToLitter, bmToStems, volToLogs, \
             volToPulp, sp, N_demand, P_demand, K_demand
     
 
@@ -997,32 +1006,20 @@ def heterotrophic_respiration_yr_bck(forc, yr, dfwt, dfair_r, v, spara):
     
         return days, np.mean(Rhet, axis=1)*10., np.sum(Rhet, axis=0)*10., np.sum(Rhet_root, axis=0)*10.       
 
-def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, standAge):
+def understory_uptake(n, lat, lon, barea0, barea1, stems0, stems1, yi0, yi1, sp, ts, simtime, sfc, standAge):
     """
-    Created on Wed Jun 18 12:07:47 2014
-
-    @author: slauniai
-
-    Computes understory biomasses using models of Muukkonen & Makipaa, 2006 Bor. Env. Res.\n
-    INPUT:
-        n - number of nodes in the transect
-        lat - latitude in YKJ or EUREF equivalent 
-        lon - longitude 
-        ts - annual temperature sum in degree days 
-        expected_yield of stand during the simulation period m3 ha-1
-        simtime - simulation time in years
-        x - array of independent variables (optional, if not provided age-based model is used):
-            x[0]=lat (degN, in decimal degrees)
-            x[1]=lon (degE in decimal degrees) 
-            x[2]=elev (m)
-            x[3]=temperature sum (degC)
-            x[4]=site nutrient level (-) 
-            x[5]=stem vol. (m3 ha-1)
-            x[6]=stem nr (ha-1)
-            x[7]=basal area (m2 ha-1)
-            x[8]=site drainage status,integer
-    OUTPUT:
-        y - dry biomasses (kg ha-1) of different groups\n
+    INPUT: 
+        n - number of computation nodes between ditches
+        lat - latitude in [units]
+        lon - longitude in [units]
+        barea 0,1 - stand basal area [m2], start, end
+        stems 0,1 - number of stems per ha, start, end
+        yi 0,1 - stand volume as time series, start, end
+        sp - dominant tree species - 1 pine, 2 spruce, 3 birch
+        ts - temperature sum [dd]
+        simtime  - simulation time in yrs
+        sfc - site fertility class, 
+        standAge in yrs
     SOURCE:
         Muukkonen & Makipaa, 2006. Bor.Env.Res. 11, 355-369.\n
     AUTHOR:
@@ -1031,15 +1028,8 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
          Multi-regression models not yet tested!
          In model equations independent variables named differently to M&M (2006): here x[0] = z1, x[1]=z2, ... x[7]=z8 and x[8]=z10\n
          \n
-         Site nutrient level x[4] at upland sites:
-             1: herb-rich forest 
-             2: herb-rich heat f. 
-             3: mesic heath f. 
-             4: sub-xeric heath f.
-             5: xeric heath f. 
-             6: barren heath f.
-             7: rock,cliff or sand f. 
-         Site nutrient level x[4] at mires:\n
+
+         Site nutrient fertility class (sfc) at mires:\n
              1: herb-rich hw-spruce swamps, pine mires, fens, 
              2: V.myrtillus / tall sedge spruce swamps, tall sedge pine fens, tall sedge fens,
              3: Carex clobularis / V.vitis-idaea swamps, Carex globularis pine swamps, low sedge (oligotrophic) fens,
@@ -1052,19 +1042,23 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
              4: Transforming drained mires, veget. resembles upland forest site type, tree-stand forest-like.
   
     """
+    #ATTN! convert barea, stems, yi, standAge from time series to list containing start and end state (adjustment to annual call)
 
     if sp == 2: 
-        smc=np.ones(n)*2      #spruce
+        smc = np.ones(n)*2      #spruce
     else:
-        smc=np.ones(n)*3      #pine and others
+        smc = np.ones(n)*3      #pine and others
     
     #n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc     
-    age = np.ones(n)*standAge
-    sfc = np.ones(n)*sfc  ## x2 surface elevation m asl
-    dem = np.ones(n)*80.  ## x2 surface elevation m asl
-    vol = np.ones(n)*yi[0]  # x5 stand volume m3 ha-1
-    ba = np.ones(n)*barea[0]  # x7 basal area m2 ha-1    
-    expected_yield = np.ones(n)*(yi[-1]- yi[0])
+    age = np.ones(n) * standAge                                                
+    sfc = np.ones(n) * sfc  ## x2 surface elevation m asl
+    dem = np.ones(n) * 80.  ## x2 surface elevation m asl
+   
+    vol = yi0 #np.ones(n) * yi[0]  # x5 stand volume m3 ha-1
+    ba = barea0 #np.ones(n) * barea[0]  # x7 basal area m2 ha-1    
+    Nstems = stems0 #np.ones(n)*stems[0]   # x6 number of stems -ha, default 900
+    
+    #expected_yield = np.ones(n)*(yi[-1]- yi[0])
     
     #------------- classify and map pixels-------------------------------------------------------- 
     ix_spruce_mire = np.where(np.equal(smc, 2))
@@ -1072,10 +1066,15 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
     ix_open_peat = np.where(np.equal(smc, 4))
     
     #---------------------------------------
-    latitude = 0.0897*lat/10000. + 0.3462                                       #approximate conversion to decimal degrees within Finland,  N
-    longitude = 0.1986*(lon-3000000)/10000. + 17.117                            #approximate conversion to decimal degrees within Finland in degrees E
-    Nstems = stems[0]   # x6 number of stems -ha, default 900
-    drain_s =4      # x8 drainage status, default value 4
+    #ATTN: change here a module from NutSpaFHy (Auran tekemä muokkaus)
+    #latitude = 0.0897*lat/10000. + 0.3462                                       #approximate conversion to decimal degrees within Finland,  N
+    #longitude = 0.1986*(lon-3000000)/10000. + 17.117                            #approximate conversion to decimal degrees within Finland in degrees E
+    
+    inProj = Proj(init='epsg:3067')
+    outProj = Proj(init='epsg:4326')
+    longitude,latitude = transform(inProj,outProj,lon,lat)
+
+    drain_s = 4      # x8 drainage status, default value 4
 
     #---------------------------------------
 
@@ -1122,20 +1121,24 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
 
         fl_share = {'description': 'share of dwarf shrubs (ds) and herbas & grasses (h) from field layer biomass, kg kg-1',
                     'pine_upland':{'ds': 0.91, 'h': 0.09}, 'spruce_upland':{'ds': 0.71, 'h': 0.29}, 
-                    'broadleaved_upland':{'ds': 0.38, 'h': 0.62}, 'spruce_mire':{'ds': 0.90, 'h': 0.10}, 
-                    'pine_bog':{'ds': 0.50, 'h': 0.50}}
+                    'broadleaved_upland':{'ds': 0.38, 'h': 0.62}, 'spruce_mire':{'ds': 0.50, 'h': 0.50}, 
+                    'pine_bog':{'ds': 0.90, 'h': 0.10}}
         nut_con ={'description': 'nutrient concentration of dwarf shrubs (ds), herbs & grasses (h), upland mosses (um), and sphagna (s), unit mg/g',
                   'ds':{'N':12.0, 'P':1.0, 'K': 4.7}, 'h':{'N':18.0, 'P':2.0, 'K': 15.1}, 'um':{'N':12.5, 'P':1.4, 'K':4.3}, 
                   's':{'N':6.0, 'P':1.4, 'K':4.3}}
         lit_share = {'description': 'share of living biomass that is lost as litter annually for dwarf shrubs (ds), herbs & grasses (h), upland mosses (um), and sphagna (s), unit: kg kg-1',
                    'ds': 0.2, 'h': 0.5, 'um': 0.3, 's': 0.3}
+        green_share = {'description': 'share of green mass from the total biomass of dwarf shrubs (ds), herbs & grasses (h), upland mosses (um), and sphagna (s), unit kg/kg',
+                       'ds': 0.2, 'h': 0.5, 'um': 0.3, 's': 0.3}
         retrans ={'description': 'share of nutrients retranslocated before litterfallfor dwarf shrubs (ds), herbs & grasses (h), upland mosses (um), and sphagna (s), unit: kg kg-1',
                   'ds': {'N':0.69, 'P':0.73, 'K':0.87},'h': {'N':0.69, 'P':0.73, 'K':0.87}, 
                   'um': {'N':0.0, 'P':0.0, 'K':0.0},'s': {'N':0.0, 'P':0.0, 'K':0.0}}
         # retrans for pine {'N': 0.69, 'P': 0.73, 'K':0.87}
+        #ATTN: changes 4.1.2021 fl_share pine_bog vs spruce_mire (vice versa)
+        #check, and change back restranslocation for herbs 
         
-        fl_to_total_turnover = 1.2   # converts the turnover of above-ground bionmass to total including root turnover
-        fl_above_to_total = 1.7   # converts aboveground biomass to total biomass 
+        fl_to_total_turnover = 1.2    # converts the turnover of above-ground bionmass to total including root turnover
+        fl_above_to_total = 1.7       # converts aboveground biomass to total biomass 
         
         #--------- create output arrays -----------------------------
         gv_tot = np.zeros(n)                           # Ground vegetation mass kg ha-1
@@ -1153,127 +1156,104 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
         k_gv = np.zeros(n)                             # K in ground vegetation kg ha-1
 
         """------ Ground vegetation models from Muukkonen & Mäkipää 2006 BER vol 11, Tables 6,7,8"""    
-        """
-        #***************** Spruce mire ***************************************
-        ix = ix_spruce_mire        
-        gv_bot[ix] =  np.square(-3.182 + 0.022*latitude*longitude +2e-4*dem[ix]*age[ix] \
-                                -0.077*sfc[ix]*longitude -0.003*longitude*vol[ix] + 2e-4*np.square(vol[ix]))-0.5 + 98.10  #Bottom layer total
-        gv_field[ix] =  np.square(23.24 -1.163*drain_s**2 +1.515*sfc[ix]*drain_s -2e-5*vol[ix]*Nstems\
-                                +8e-5*ts*age[ix] +1e-5*Nstems*dem[ix])-0.5 +  162.58   #Field layer total
-        gv_tot[ix] = np.square(35.52 +0.001*longitude*dem[ix] -1.1*drain_s**2 -2e-5*vol[ix]*Nstems \
-                                +4e-5*Nstems*age[ix] +0.139*longitude*drain_s) -0.5 + 116.54 #Total
         
-        gv_bot[ix]= np.maximum(gv_bot[ix], 0.0)
-        gv_field[ix]= np.maximum(gv_field[ix], 0.0)
-        gv_tot[ix]= np.maximum(gv_tot[ix], 0.0)
-        """
-        
-                #***************** Spruce mire ***************************************
+        #     ***************** Spruce mire ***************************************
         ix = ix_spruce_mire        
-        gv_tot[ix] = np.square(35.52 +0.001*longitude*dem[ix] -1.1*drain_s**2 -2e-5*vol[ix]*Nstems \
-                                +4e-5*Nstems*age[ix] +0.139*longitude*drain_s) -0.5 + 116.54 #Total
+        gv_tot[ix] = np.square(35.52 +0.001*longitude*dem[ix] -1.1*drain_s**2 -2e-5*vol[ix]*Nstems[ix] \
+                                +4e-5*Nstems[ix]*age[ix] +0.139*longitude*drain_s) -0.5 + 116.54 # Total, Eq.39, Table 9
         gv_bot[ix] =  np.square(-3.182 + 0.022*latitude*longitude +2e-4*dem[ix]*age[ix] \
-                                -0.077*sfc[ix]*longitude -0.003*longitude*vol[ix] + 2e-4*np.square(vol[ix]))-0.5 + 98.10  #Bottom layer total
-        gv_field[ix] =  np.square(23.24 -1.163*drain_s**2 +1.515*sfc[ix]*drain_s -2e-5*vol[ix]*Nstems\
-                                +8e-5*ts*age[ix] +1e-5*Nstems*dem[ix])-0.5 +  162.58   #Field layer total
-        # removing inconsistent values
+                                -0.077*sfc[ix]*longitude -0.003*longitude*vol[ix] + 2e-4*np.square(vol[ix]))-0.5 + 98.10  #Bottom layer total, Eq. 35, Table 9
+        gv_field[ix] =  np.square(23.24 -1.163*drain_s**2 +1.515*sfc[ix]*drain_s -2e-5*vol[ix]*Nstems[ix]\
+                                +8e-5*ts*age[ix] +1e-5*Nstems[ix]*dem[ix])-0.5 +  162.58   #Field layer total, Eq. 37, Table 9
+        
+       # removing inconsistent values
         gv_field[ix] = np.minimum(gv_tot[ix], gv_field[ix])
         gv_bot[ix] = np.minimum(gv_tot[ix], gv_bot[ix])        
         gv_field[ix] = np.maximum(gv_field[ix], gv_tot[ix] - gv_bot[ix])
 
         #annual litterfall rates
-        ds_litterfall[ix] = fl_share['spruce_mire']['ds']*(gv_tot[ix]-gv_bot[ix])*lit_share['ds']*fl_to_total_turnover
-        h_litterfall[ix] = fl_share['spruce_mire']['h']*(gv_tot[ix]-gv_bot[ix])*lit_share['h']*fl_to_total_turnover
-        s_litterfall[ix] = gv_bot[ix]*lit_share['s']
-        gv_leafmass[ix] =fl_share['spruce_mire']['ds']*(gv_tot[ix]-gv_bot[ix])*lit_share['ds'] + \
-                        fl_share['spruce_mire']['h']*(gv_tot[ix]-gv_bot[ix])*lit_share['h'] + \
-                        gv_bot[ix]*lit_share['s']
+        #ATTN! vaihda nämä suoraan field layeriksi, poista tot ja bommomin kautta menevä yhteys
+        ds_litterfall[ix] = fl_share['spruce_mire']['ds'] * (gv_tot[ix]-gv_bot[ix])*lit_share['ds'] * fl_to_total_turnover
+        h_litterfall[ix]  = fl_share['spruce_mire']['h'] * (gv_tot[ix]-gv_bot[ix])*lit_share['h'] * fl_to_total_turnover
+        s_litterfall[ix]  = gv_bot[ix]*lit_share['s']
+        
+        #ATTN! tarkista tämä, onko järkevä? Tee oma dictionary lehtimassalle
+        gv_leafmass[ix]   = fl_share['spruce_mire']['ds'] * (gv_tot[ix]-gv_bot[ix]) * green_share['ds'] + \
+                               fl_share['spruce_mire']['h']*(gv_tot[ix]-gv_bot[ix]) * green_share['h'] + \
+                               gv_bot[ix] * green_share['s']
         
         
-        n_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds']*nut_con['ds']['N']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['spruce_mire']['h']*nut_con['h']['N']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['N']*1e-3
-        p_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds']*nut_con['ds']['P']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['spruce_mire']['h']*nut_con['h']['P']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['P']*1e-3
-        k_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds']*nut_con['ds']['K']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['spruce_mire']['h']*nut_con['h']['K']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['K']*1e-3
+        n_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds'] * nut_con['ds']['N']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['spruce_mire']['h'] * nut_con['h']['N']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] * nut_con['s']['N']*1e-3
+        p_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds'] * nut_con['ds']['P']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['spruce_mire']['h'] * nut_con['h']['P']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] *nut_con['s']['P']*1e-3
+        k_gv[ix] = gv_field[ix] * fl_share['spruce_mire']['ds'] * nut_con['ds']['K']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['spruce_mire']['h'] *  nut_con['h']['K']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] *nut_con['s']['K']*1e-3
+        
         nup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['N']*1e-3 * (1.0 -retrans['ds']['N']) \
-                        +h_litterfall[ix] * nut_con['h']['N']*1e-3 * (1.0 -retrans['h']['N']) \
-                        +s_litterfall[ix] * nut_con['s']['N']*1e-3 * (1.0 -retrans['s']['N'])
-        pup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['P']*1e-3 * (1.0 -retrans['ds']['P']) \
-                        +h_litterfall[ix] * nut_con['h']['P']*1e-3 * (1.0 -retrans['h']['P']) \
-                        +s_litterfall[ix] * nut_con['s']['P']*1e-3 * (1.0 -retrans['s']['P'])
-        kup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['K']*1e-3 * (1.0 -retrans['ds']['K']) \
-                        +h_litterfall[ix] * nut_con['h']['K']*1e-3 * (1.0 -retrans['h']['K']) \
-                        +s_litterfall[ix] * nut_con['s']['K']*1e-3 * (1.0 -retrans['s']['K'])
+                        + h_litterfall[ix] * nut_con['h']['N']*1e-3 * (1.0 -retrans['h']['N']) \
+                        + s_litterfall[ix] * nut_con['s']['N']*1e-3 * (1.0 -retrans['s']['N'])
         
-       #***************** Pine bogs ***************************************
-        """ 
-        ix = ix_pine_bog            
-        gv_bot[ix] =  np.square(31.809 +0.008*longitude*dem[ix] -3e-4*Nstems*ba[ix] \
-                                +6e-5*Nstems*age[ix] -0.188*dem[ix]) -0.5 + 222.22                #Bottom layer total
-        #gv_field[ix] =  np.square(48.12 -1e-5*ts**2 +0.013*sfc[ix]*age[ix] -0.04*vol[ix]*age[ix] \
-        #                        +0.026*sfc[ix]*vol[ix]) - 0.5 +133.26                                        #Field layer total
-        gv_field[ix] =  np.square(48.12 -0.00001*ts**2 +0.013*sfc[ix]*age[ix] -0.004*vol[ix]*age[ix] \
-                                +0.026*sfc[ix]*vol[ix]) - 0.5 +133.26                                        #Field layer total
+        pup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['P']*1e-3 * (1.0 -retrans['ds']['P']) \
+                        + h_litterfall[ix] * nut_con['h']['P']*1e-3 * (1.0 -retrans['h']['P']) \
+                        + s_litterfall[ix] * nut_con['s']['P']*1e-3 * (1.0 -retrans['s']['P'])
+        
+        kup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['K']*1e-3 * (1.0 -retrans['ds']['K']) \
+                        + h_litterfall[ix] * nut_con['h']['K']*1e-3 * (1.0 -retrans['h']['K']) \
+                        + s_litterfall[ix] * nut_con['s']['K']*1e-3 * (1.0 -retrans['s']['K'])
+        
+       # ***************** Pine bogs ***************************************
 
-        gv_tot[ix] =  np.square(50.098 +0.005*longitude*dem[ix] -0.00001*vol[ix]*Nstems +0.026*sfc[ix]*age[ix] \
-                    -0.0001*dem[ix]*ts -0.014*vol[ix]*drain_s) - 0.5 + 167.40                #Total           
-
-        gv_bot[ix]= np.maximum(gv_bot[ix], 0.0)
-        gv_field[ix]= np.maximum(gv_field[ix], 0.0)
-        gv_tot[ix]= np.maximum(gv_tot[ix], 0.0)
-        """
         ix = ix_pine_bog            
-        gv_tot[ix] =  np.square(50.098 +0.005*longitude*dem[ix] -1e-5*vol[ix]*Nstems +0.026*sfc[ix]*age[ix] \
-                    -1e-4*dem[ix]*ts -0.014*vol[ix]*drain_s) - 0.5 + 167.40                #Total           
-        gv_bot[ix] =  np.square(31.809 +0.008*longitude*dem[ix] -3e-4*Nstems*ba[ix] \
-                                +6e-5*Nstems*age[ix] -0.188*dem[ix]) -0.5 + 222.22                #Bottom layer total
-        gv_field[ix] =  np.square(48.12 -1e-5*ts**2 +0.013*sfc[ix]*age[ix] -0.04*vol[ix]*drain_s \
-                                +0.026*sfc[ix]*vol[ix]) - 0.5 +133.26                                        #Field layer total
+        gv_tot[ix] =  np.square(50.098 + 0.005 * longitude*dem[ix] -1e-5 * vol[ix] * Nstems[ix] + 0.026 * sfc[ix] * age[ix] \
+                      -1e-4 * dem[ix] * ts - 0.014 * vol[ix] * drain_s) - 0.5 + 167.40                #Total, Eq 45, Table 9           
+        gv_bot[ix] =  np.square(31.809 + 0.008 * longitude * dem[ix] -3e-4 * Nstems[ix] * ba[ix] \
+                                + 6e-5 * Nstems[ix] * age[ix] -0.188 * dem[ix]) -0.5 + 222.22                #Bottom layer total, Eq 41, Table 9
+        gv_field[ix] =  np.square(48.12 - 1e-5 * ts**2 + 0.013 * sfc[ix] * age[ix] -0.04 * vol[ix] * drain_s \
+                                + 0.026 * sfc[ix] * vol[ix]) - 0.5 +133.26                                        #Field layer total, Eq. 43, Table 9
 
         # removing inconsistent values
         gv_field[ix] = np.minimum(gv_tot[ix], gv_field[ix])
         gv_bot[ix] = np.minimum(gv_tot[ix], gv_bot[ix])        
         gv_field[ix] = np.maximum(gv_field[ix], gv_tot[ix] - gv_bot[ix])
 
-        
-        
+        # annual litterfall rates
 
-        #gv_field[ix] = np.maximum(np.zeros(n),(gv_tot[ix] - gv_bot[ix]))
-              #annual litterfall rates
-
-        ds_litterfall[ix] = fl_share['pine_bog']['ds']*(gv_tot[ix]-gv_bot[ix])*lit_share['ds']*fl_to_total_turnover
-        h_litterfall[ix] = fl_share['pine_bog']['h']*(gv_tot[ix]-gv_bot[ix])*lit_share['h']*fl_to_total_turnover
-        s_litterfall[ix] = gv_bot[ix]*lit_share['s']
-        gv_leafmass[ix] =fl_share['pine_bog']['ds']*(gv_tot[ix]-gv_bot[ix])*lit_share['ds'] + \
-                        fl_share['pine_bog']['h']*(gv_tot[ix]-gv_bot[ix])*lit_share['h'] + \
-                        gv_bot[ix]*lit_share['s']
+        ds_litterfall[ix] = fl_share['pine_bog']['ds'] * (gv_tot[ix]-gv_bot[ix]) * lit_share['ds'] * fl_to_total_turnover
+        h_litterfall[ix]  = fl_share['pine_bog']['h']  * (gv_tot[ix]-gv_bot[ix]) * lit_share['h'] * fl_to_total_turnover
+        s_litterfall[ix]  = gv_bot[ix] * lit_share['s']
+        gv_leafmass[ix]   = fl_share['pine_bog']['ds'] * (gv_tot[ix]-gv_bot[ix]) * green_share['ds'] + \
+                            fl_share['pine_bog']['h'] * (gv_tot[ix]-gv_bot[ix]) * green_share['h'] + \
+                            gv_bot[ix]*green_share['s']
       
         
-        n_gv[ix] = gv_field[ix] * fl_share['pine_bog']['ds']*nut_con['ds']['N']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['pine_bog']['h']*nut_con['h']['N']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['N']*1e-3
-        p_gv[ix] = gv_field[ix] * fl_share['pine_bog']['ds']*nut_con['ds']['P']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['pine_bog']['h']*nut_con['h']['P']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['P']*1e-3
-        k_gv[ix] = gv_field[ix] * fl_share['pine_bog']['ds']*nut_con['ds']['K']*1e-3*fl_above_to_total \
-                        +gv_field[ix] * fl_share['pine_bog']['h']*nut_con['h']['K']*1e-3*fl_above_to_total \
-                        +gv_bot[ix] *nut_con['s']['K']*1e-3
-        nup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['N']*1e-3 * (1.0 -retrans['ds']['N']) \
-                        +h_litterfall[ix] * nut_con['h']['N']*1e-3 * (1.0 -retrans['h']['N']) \
-                        +s_litterfall[ix] * nut_con['s']['N']*1e-3 * (1.0 -retrans['s']['N'])
-        pup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['P']*1e-3 * (1.0 -retrans['ds']['P']) \
-                        +h_litterfall[ix] * nut_con['h']['P']*1e-3 * (1.0 -retrans['h']['P']) \
-                        +s_litterfall[ix] * nut_con['s']['P']*1e-3 * (1.0 -retrans['s']['P'])
-        kup_litter[ix] = ds_litterfall[ix] * nut_con['ds']['K']*1e-3 * (1.0 -retrans['ds']['K']) \
-                        +h_litterfall[ix] * nut_con['h']['K']*1e-3 * (1.0 -retrans['h']['K']) \
-                        +s_litterfall[ix] * nut_con['s']['K']*1e-3 * (1.0 -retrans['s']['K'])
+        n_gv[ix] =        gv_field[ix] * fl_share['pine_bog']['ds'] * nut_con['ds']['N']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['pine_bog']['h'] * nut_con['h']['N']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] * nut_con['s']['N']*1e-3
+                        
+        p_gv[ix] =        gv_field[ix] * fl_share['pine_bog']['ds'] * nut_con['ds']['P']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['pine_bog']['h'] * nut_con['h']['P']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] * nut_con['s']['P']*1e-3
+        
+        k_gv[ix] =        gv_field[ix] * fl_share['pine_bog']['ds'] * nut_con['ds']['K']*1e-3 * fl_above_to_total \
+                        + gv_field[ix] * fl_share['pine_bog']['h'] * nut_con['h']['K']*1e-3 * fl_above_to_total \
+                        + gv_bot[ix] * nut_con['s']['K']*1e-3
+        
+        nup_litter[ix] =  ds_litterfall[ix] * nut_con['ds']['N']*1e-3 * (1.0 -retrans['ds']['N']) \
+                        + h_litterfall[ix] * nut_con['h']['N']*1e-3 * (1.0 -retrans['h']['N']) \
+                        + s_litterfall[ix] * nut_con['s']['N']*1e-3 * (1.0 -retrans['s']['N'])
+        
+        pup_litter[ix] =  ds_litterfall[ix] * nut_con['ds']['P']*1e-3 * (1.0 -retrans['ds']['P']) \
+                        + h_litterfall[ix] * nut_con['h']['P']*1e-3 * (1.0 -retrans['h']['P']) \
+                        + s_litterfall[ix] * nut_con['s']['P']*1e-3 * (1.0 -retrans['s']['P'])
+                        
+        kup_litter[ix] =  ds_litterfall[ix] * nut_con['ds']['K']*1e-3 * (1.0 -retrans['ds']['K']) \
+                        + h_litterfall[ix] * nut_con['h']['K']*1e-3 * (1.0 -retrans['h']['K']) \
+                        + s_litterfall[ix] * nut_con['s']['K']*1e-3 * (1.0 -retrans['s']['K'])
 
-        
-        
         
         #------------Change clear-cut areas: reduce to 1/3 of modelled ---------------------------------------------------
         to_cc = 0.33
@@ -1297,10 +1277,11 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
 
  
     # ground vegetation mass at the end of simulation, kg ha-1    
-    vol = vol + expected_yield
+    vol = yi1         #vol + expected_yield
+    Nstems = stems1   #np.ones(n)*stems[-1]
+    ba = barea1       #np.ones(n)*barea[-1]
+
     age = np.ones(n)*(standAge + simtime)
-    Nstems = stems[-1]
-    ba = np.ones(n)*barea[-1]
     n_gv_end, p_gv_end, k_gv_end, nup_litter_end, pup_litter_end, kup_litter_end, gv_tot_end, litterfall_gv_end, gv_leafmass_end = gv_biomass_and_nutrients(n, ix_spruce_mire, ix_pine_bog,
                 ix_open_peat, latitude, longitude, dem, ts, sfc, vol, Nstems, ba, drain_s, age)
     
@@ -1317,9 +1298,10 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
     pup = pup_net + pup_litter_mean*simtime         # total P uptake kg ha-1 simulation time (in yrs) -1
     kup = kup_net + kup_litter_mean*simtime         # total P uptake kg ha-1 simulation time (in yrs) -1
     
-    litterfall_tot = np.mean([litterfall_gv, litterfall_gv_end], axis=0)*simtime  #total gv litterfall in the simulation time kg ha-1
+    litterfall_tot = np.mean([litterfall_gv, litterfall_gv_end], axis=0) * simtime  #total gv litterfall in the simulation time kg ha-1
     gv_leafmass_mean = np.mean([gv_leafmass, gv_leafmass_end], axis = 0)
     
+    """
     print ('    + Ground vegetation nutrient demand')
     fill = ('      -')
     print (fill, 'gv biomass', np.round(np.mean(gv_tot),2),'...' ,np.round(np.mean(gv_tot_end),2))
@@ -1327,7 +1309,7 @@ def understory_uptake(n, lat, lon, barea, stems, yi, sp, ts, simtime, sfc, stand
     print (fill, 'P demand', np.round(np.mean(pup),2))
     print (fill, 'K demand', np.round(np.mean(kup),2))
     print (fill, 'gv litterfall', np.round(np.mean(litterfall_tot),2))
-    
+    """
     return nup, pup, kup, litterfall_tot, gv_leafmass
 
 def get_temp_sum(forc):

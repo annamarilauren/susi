@@ -8,6 +8,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import PyQt5
+
 import datetime
 import numpy as np
 import pandas as pd
@@ -570,18 +571,12 @@ class Ui_MainWindowSusi(object):
         #print ('********************')
         #print (self.spara[site])
         #print ('********************')
-        
-        #v_ini, v, iv, cb, dcb, w, dw, logs, pulp, dv, dlogs, dpulp, yrs = run_susi(forc, wpara, cpara, 
-        #                org_para, self.spara[site], self.outpara, photopara, syr, eyr, wlocation = 'undefined', 
-        #                mottifile=mottifile, peat= 'other', photosite='All data', 
-        #                folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=self.spara[site]['sfc'], susiPath=susiPath, kaista=kaista)
-
+  
         v_ini, v, iv, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bmgr,Nleach, \
                         Pleach, Kleach, DOCleach, runoff = run_susi(forc, wpara, cpara, 
                         org_para, self.spara[site], self.outpara, photopara, syr, eyr, wlocation = 'undefined', 
                         mottifile=mottifile, peat= 'other', photosite='All data', 
                         folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=self.spara[site]['sfc'], susiPath=susiPath, kaista=kaista)
-  
         
         print ('now returned')
         

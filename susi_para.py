@@ -128,10 +128,10 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'develop_scens':{
         'species': 'Pine', 'sfc':sfc, 'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
         'nLyrs':30, 'dzLyr': 0.05, 'L': sarkaSim, 'n':n, 
-        'ditch depth west': [-0.3,  -0.7],   #nLyrs kerrosten lkm, dzLyr kerroksen paksuus m, saran levys m, n laskentasolmulen lukumäärä, ditch depth pjan syvyys simuloinnin alussa m  
-        'ditch depth east': [-0.3,  -0.7],
-        'ditch depth 20y west': [-0.3,  -0.7],                                            #ojan syvyys 20 vuotta simuloinnin aloituksesta
-        'ditch depth 20y east': [-0.3, -0.7],                                            #ojan syvyys 20 vuotta simuloinnin aloituksesta
+        'ditch depth west': [-0.3,  -0.9],   #nLyrs kerrosten lkm, dzLyr kerroksen paksuus m, saran levys m, n laskentasolmulen lukumäärä, ditch depth pjan syvyys simuloinnin alussa m  
+        'ditch depth east': [-0.3,  -0.9],
+        'ditch depth 20y west': [-0.3,  -0.9],                                            #ojan syvyys 20 vuotta simuloinnin aloituksesta
+        'ditch depth 20y east': [-0.3, -0.9],                                            #ojan syvyys 20 vuotta simuloinnin aloituksesta
         'scenario name': ['Control',  'DNM90' ], #kasvunlisaykset
         'initial h': -0.2, 'slope': 0.0, 
         'peat type':['A','A','A','A','A','A','A','A'], 
