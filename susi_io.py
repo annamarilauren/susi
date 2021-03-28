@@ -574,23 +574,23 @@ def weather_fig(df):
     #import string
     #printable = set(string.printable)
     fs=12
-    fig = plt.figure(num='Susi - säädata', figsize=[15.,8.], facecolor='#C1ECEC')  #see hex color codes from https://www.rapidtables.com/web/color/html-color-codes.html
+    fig = plt.figure(num='Susi - weather data', figsize=[15.,8.], facecolor='#C1ECEC')  #see hex color codes from https://www.rapidtables.com/web/color/html-color-codes.html
     municipality = df['Kunta'][0]   
     #fig.suptitle('Weather data, '+ filter(lambda x: x in printable, municipality), fontsize=18)
     ax1 = fig.add_axes([0.05,0.55,0.6,0.35])                             #left, bottom, width, height
-    ax1.plot(df.index, df['Prec'].values, 'b-', label='Sadanta')
-    ax1.set_xlabel('Aika', fontsize=fs)
-    ax1.set_ylabel('Sademäärä, mm', fontsize=12)
+    ax1.plot(df.index, df['Prec'].values, 'b-', label='Rainfall')
+    ax1.set_xlabel('Time', fontsize=fs)
+    ax1.set_ylabel('Rainfall, mm', fontsize=12)
     ax1.legend(loc='upper left')
     ax11 = ax1.twinx()
-    ax11.plot(df.index, np.cumsum(df['Prec'].values), 'm-', linewidth=2., label='Kumulatiiivinen sadanta')
-    ax11.set_ylabel('Kumulatiivinen sadanta [mm]', fontsize = fs)
+    ax11.plot(df.index, np.cumsum(df['Prec'].values), 'm-', linewidth=2., label='Cumulative rainfall')
+    ax11.set_ylabel('Cumulative rainfall [mm]', fontsize = fs)
     ax11.legend(loc='upper right')
 
-    annual_prec=df['Prec'].resample('A',how='sum')      
+    annual_prec = df['Prec'].resample('A').sum()
     ax2 =fig.add_axes([0.73, 0.55, 0.25, 0.35])
     
-    t1 = 'Keskimääräinen vuosisadanta ' + str(np.round(np.mean(annual_prec.values))) + ' mm'    
+    t1 = 'Mean annual rainfall ' + str(np.round(np.mean(annual_prec.values))) + ' mm'    
     ax2.set_title(t1, fontsize = 14)
     y_pos = np.arange((len(annual_prec)))
     plt.bar(y_pos, annual_prec.values, align='center', alpha = 0.5)    
@@ -603,10 +603,10 @@ def weather_fig(df):
     ax3.plot(df.index, zeroline, 'b-')
     ax3.fill_between(df.index, df['T'],0, where=df['T']<0.0, facecolor='b', alpha=0.3)
     ax3.fill_between(df.index, df['T'],0, where=df['T']>=0.0, facecolor='r', alpha=0.3)
-    ax3.set_ylabel('Ilman lämpötila, $^\circ$ C', fontsize = fs)
+    ax3.set_ylabel('Air temperature, $^\circ$ C', fontsize = fs)
 
-    annual_temp=df['T'].resample('A',how='mean')  
-    t2 = 'Vuoden keskilämpötila ' + str(np.round(np.mean(annual_temp.values), 2)) + '  $^\circ$ C'    
+    annual_temp = df['T'].resample('A').mean()
+    t2 = 'Mean annual temperature ' + str(np.round(np.mean(annual_temp.values), 2)) + '  $^\circ$ C'    
     
     ax4 =fig.add_axes([0.73, 0.08, 0.25, 0.35])
     ax4.set_title(t2, fontsize = 14)
@@ -619,25 +619,25 @@ def weather_fig(df):
 def motti_fig(df, ini_age, sim_time):
     sns.set()
 
-    fig = plt.figure(num='Susi, metsikkö', figsize=[15.,8.], facecolor='#C1ECEC')  #see hex color codes from https://www.rapidtables.com/web/color/html-color-codes.html
-    fig.suptitle('Metsikön kehitys (Motti simulointi)', fontsize=18)
+    fig = plt.figure(num='Susi, stand data', figsize=[15.,8.], facecolor='#C1ECEC')  #see hex color codes from https://www.rapidtables.com/web/color/html-color-codes.html
+    fig.suptitle('Stand development (Motti simulation)', fontsize=18)
     
     ax= plt.subplot(231)
     ax.plot(df['age'], df['hdom'], color='green')
     ax.axvspan(ini_age, ini_age+sim_time, color='red', alpha=0.3)        
-    plt.ylabel('Valtapituus [m]')
+    plt.ylabel('Dominant height [m]')
     #plt.xlabel('Age, yrs')
     
     ax= plt.subplot(232)
     ax.plot(df['age'], df['N'], color='green')
     ax.axvspan(ini_age, ini_age+sim_time, color='red', alpha=0.3)        
-    plt.ylabel('Runkoluku [kpl $ha^{-1}$]')
+    plt.ylabel('Stem count [$ha^{-1}$]')
     #plt.xlabel('Age, yrs')
     
     ax= plt.subplot(233)
     ax.plot(df['age'], df['BA'], color='green')
     ax.axvspan(ini_age, ini_age+sim_time, color='red', alpha=0.3)        
-    plt.ylabel('Pohjapinta-ala [$m^{2}$ $ha^{-1}$]')
+    plt.ylabel('Basal area [$m^{2}$ $ha^{-1}$]')
     #plt.xlabel('Age, yrs')
  
     ax= plt.subplot(234)
@@ -649,15 +649,15 @@ def motti_fig(df, ini_age, sim_time):
     ax= plt.subplot(235)
     ax.plot(df['age'], df['Dg'], color='green')
     ax.axvspan(ini_age, ini_age+sim_time, color='red', alpha=0.3)        
-    plt.ylabel('Keskiläpimitta [cm]')
-    plt.xlabel('Ikä, vuotta')
+    plt.ylabel('Mean diameter [cm]')
+    plt.xlabel('Age, years')
  
     sla= 6.8
     ax= plt.subplot(236)
     ax.plot(df['age'], df['leaves']/10.*sla, color='green')
     ax.axvspan(ini_age, ini_age+sim_time, color='red', alpha=0.3)        
-    plt.ylabel('Lehtialaindeksi [m2 $m^{-2}$]')
-    plt.xlabel('Ikä, vuotta')
+    plt.ylabel('Leaf area index [m2 $m^{-2}$]')
+    plt.xlabel('Age, years')
     plt.show()
     
 def print_scenario(r,co2release,deltas, h0ts, dwts, bmToYi, npps, bm, yi, ets ):
