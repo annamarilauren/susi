@@ -238,8 +238,8 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
 
             g_npps[r,yr-start_yr,:] = g_npp
             g_npps_pot[r,yr-start_yr,:] = g_npp_pot
-            g_N, g_P, g_K = nut_to_vol(v, Ns,Ps,Ks,bmToLitter(b)*365., nup_gv/yrs, pup_gv/yrs, 
-                                       kup_gv/yrs, leaf_mass*1000, gv_leafmass )              # volume growth allowed by nutrient release litter here in kg/ha/yr
+            g_N, g_P, g_K = nut_to_vol(v, Ns,Ps,Ks,bmToLitter(b)*365., nup_gv, pup_gv, 
+                                       kup_gv, leaf_mass*1000, gv_leafmass )              # volume growth allowed by nutrient release litter here in kg/ha/yr
             g_Ns[r,yr-start_yr,:] = g_N
             g_Ps[r,yr-start_yr,:] = g_P
             g_Ks[r,yr-start_yr,:] = g_K
