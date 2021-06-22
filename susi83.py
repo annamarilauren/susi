@@ -118,7 +118,12 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     Nstorage = np.zeros(n, dtype=float)                                        # Nodewise nutrient storage in the rooting zone kg/ha
     Pstorage = np.zeros(n, dtype=float)                                        # Nodewise nutrient storage in the rooting zone kg/ha
     Kstorage = np.zeros(n, dtype=float)                                        # Nodewise nutrient storage in the rooting zone kg/ha
-
+    
+    Nout = np.zeros((rounds,n))                                                # Nodewise potential for N export kg/ha
+    Pout = np.zeros((rounds,n))                                                # Nodewise potential for P export kg/ha
+    Kout = np.zeros((rounds,n))                                                # Nodewise potential for K export kg/ha
+    HMWDOCout = np.zeros((rounds, n))                                          # Nodewise potential for HMWDOC export kg/ha
+    LMWDOCout = np.zeros((rounds, n))                                          # Nodewise potential for LMWDOC export kg/ha
     
     for r, dr in enumerate(zip(spara['ditch depth west'], spara['ditch depth 20y west'], spara['ditch depth east'], spara['ditch depth 20y east'])):   #SCENARIO loop
 
@@ -274,6 +279,13 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
         c_bals_trees[r, :] = ((b-b_ini) + litter_cumul + bm_deadtrees + litterfall_gv) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
         c_bals[r, :] = (litter_cumul + bm_deadtrees + litterfall_gv) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
         biomass_gr[r, :] = (b-b_ini) + litter_cumul + bm_deadtrees
+        Nout[r, :] = Nleach
+        Pout[r, :] = Pleach
+        Kout[r, :] = Kleach
+        HMWDOCout[r, :] =  HMWleach 
+        LMWDOCout[r, :] = DOCleach - HMWleach 
+             
+        
 
         v_start = vol[0]*np.ones(n)
         potential_gr = []; phys_restr=[]; chem_restr=[]; N_gr = []; P_gr=[]; K_gr=[]; phys_gr=[]
@@ -347,9 +359,9 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     gr = np.array([end_vols[k]-end_vols[0] for k in range(rounds)])
     gr = np.array([np.mean(gr[k][fr:to]) for k in range(rounds)])        
     cbt = np.array([c_bals_trees[k]-0.0 for k in range(rounds)])
-    cbt = np.array([np.mean(cbt[k][fr:to]) for k in range(rounds)]) 
+    cbt = np.array([np.mean(cbt[k][fr:to])/yrs for k in range(rounds)]) 
     dcbt = np.array([c_bals_trees[k]-c_bals[0] for k in range(rounds)])
-    dcbt = np.array([np.mean(dcbt[k][fr:to]) for k in range(rounds)]) 
+    dcbt = np.array([np.mean(dcbt[k][fr:to])/yrs for k in range(rounds)]) 
     cb = np.array([c_bals[k]-0.0 for k in range(rounds)])
     cb = np.array([np.mean(cb[k][fr:to]) for k in range(rounds)]) 
     dcb = np.array([c_bals[k]-c_bals[0] for k in range(rounds)])
@@ -369,9 +381,13 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     bms = np.array([np.mean(bms[k][fr:to]) for k in range(rounds)])
     annual_runoff = np.sum(runoff, axis = 1)*1000. /yrs
     drunoff = [annual_runoff[k] - annual_runoff[0] for k in range(rounds)]
+    nout = [np.mean(Nout[k])/yrs for k in range(rounds)]
+    pout = [np.mean(Pout[k])/yrs for k in range(rounds)]
+    kout = [np.mean(Kout[k])/yrs for k in range(rounds)]
+    hmwdocout = [np.mean(HMWDOCout[k])/yrs for k in range(rounds)]
+    lmwdocout = [np.mean(LMWDOCout[k])/yrs for k in range(rounds)]
     
-
-    return v[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
-                    Nleach, Pleach, Kleach, DOCleach, runoff 
+    return vol[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
+                    nout, pout, kout, hmwdocout, annual_runoff 
 
           
