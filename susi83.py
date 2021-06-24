@@ -114,6 +114,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     sdwt = np.zeros((rounds, n))
     biomass_gr = np.zeros((rounds, n))
     runoff =np.zeros((rounds, int(length/dt)), dtype=float)
+    swes = np.zeros((rounds, int(length/dt)), dtype=float)
     
     Nstorage = np.zeros(n, dtype=float)                                        # Nodewise nutrient storage in the rooting zone kg/ha
     Pstorage = np.zeros(n, dtype=float)                                        # Nodewise nutrient storage in the rooting zone kg/ha
@@ -196,6 +197,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
                 air_ratios[r,d,:]= air_ratio
                 afps[r,d,:] = afp
                 runoff[r,d] = roff
+                swes[r,d] = np.mean(SWE)
                 z, peat_temperature = pt.run_timestep(ta, np.mean(SWE), np.mean(efloor))
                 peat_temperatures[r,d,:] = peat_temperature
                 d += 1
@@ -332,7 +334,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
 
         if outpara['to_file']: 
             susi_io.dwt_to_excel(dwts[r,:,:],outpara, scen[r])
-            susi_io.runoff_to_excel(runoff[r,:]*1000., outpara, scen[r])
+            susi_io.runoff_to_excel(runoff[r,:]*1000., swes[r,:], outpara, scen[r])
             #susi_io.write_excel(wlocation, wpara, spara, outpara, LAI, hdom, h0ts_west[0], h0ts_east[0],summer, summer_median_dwt)
 
         # Change delatas ets to np.mean(deltas), np.mean(ets)        

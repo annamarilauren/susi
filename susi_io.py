@@ -17,8 +17,9 @@ def dwt_to_excel(gwl, outpara, scen):
     df.to_excel(f)
     print( 'DWT to ', f)
 
-def runoff_to_excel(runoff, outpara, scen):
-    df = pd.DataFrame(runoff)
+def runoff_to_excel(runoff, swe, outpara, scen):
+    datadic = {'runoff': runoff, 'swe': swe}
+    df = pd.DataFrame(data=datadic)
     f = outpara['outfolder']+outpara['runfile'] + '_' + scen+'.xlsx'
     df.to_excel(f)
     
