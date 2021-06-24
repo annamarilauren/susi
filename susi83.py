@@ -388,8 +388,13 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     kout = [np.mean(Kout[k])/yrs for k in range(rounds)]
     hmwdocout = [np.mean(HMWDOCout[k])/yrs for k in range(rounds)]
     lmwdocout = [np.mean(LMWDOCout[k])/yrs for k in range(rounds)]
+    nrelease = [np.mean(Nrelease[k])/yrs for k in range(rounds)]
+    prelease = [np.mean(Prelease[k])/yrs for k in range(rounds)]
+    krelease = [np.mean(Krelease[k])/yrs for k in range(rounds)]
+
+    
     
     return vol[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
-                    nout, pout, kout, hmwdocout, annual_runoff 
+                    nout, pout, kout, hmwdocout, annual_runoff, nrelease, prelease, krelease 
 
           
