@@ -49,15 +49,16 @@ wpara, cpara, org_para, spara, outpara, photopara = get_susi_para(wlocation = 'u
                                                                   n = n)
 
 v_ini, v, iv5, cbt, dcbt, cb, dcb, w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bmgr, \
-    Nleach, Pleach, Kleach, DOCleach, runoff = run_susi(forc, wpara, cpara,
-                                                        org_para, spara, outpara,
-                                                        photopara, start_yr, end_yr,
-                                                        wlocation = 'undefined',
-                                                        mottifile = args.stand,
-                                                        peat = 'other',
-                                                        photosite = 'All data',
-                                                        folderName = os.getcwd(),  ## ?
-                                                        ageSim = ageSim,
-                                                        sarkaSim = sarkaSim,
-                                                        sfc = sfc,
-                                                        susiPath = os.getcwd())  ## ?
+    n_out, p_out, k_out, hmw_doc_out, runoff, \
+    n_release, p_release, k_release = run_susi(forc, wpara, cpara,
+                                               org_para, spara, outpara,
+                                               photopara, start_yr, end_yr,
+                                               wlocation = 'undefined',
+                                               mottifile = args.stand,
+                                               peat = 'other',
+                                               photosite = 'All data',
+                                               folderName = os.getcwd(),  ## ?
+                                               ageSim = ageSim,
+                                               sarkaSim = sarkaSim,
+                                               sfc = sfc,
+                                               susiPath = os.getcwd())  ## ?
