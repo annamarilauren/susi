@@ -173,13 +173,13 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             lai =  bmToLAI(b) 
             for dd in range(days):                                             # day loop   
                 #-------Canopy hydrology--------------------------            
-                reww = rew_drylimit(dwt)                                       # for each column: moisture limitation from ground water level (Feddes-function)            
-                doy = forc.iloc[d, 14]
-                ta =  forc.iloc[d, 4]
-                vpd = forc.iloc[d, 13]
-                rg = forc.iloc[d, 8]
-                par = forc.iloc[d, 10]
-                prec=forc.iloc[d, 7]/86400.
+                reww = rew_drylimit(dwt) # for each column: moisture limitation from ground water level (Feddes-function)
+                doy  = forc.iloc[d, forc.columns.get_loc('doy')] # forc.iloc[d, 14]
+                ta   = forc.iloc[d, forc.columns.get_loc('T')]   # forc.iloc[d, 4]
+                vpd  = forc.iloc[d, forc.columns.get_loc('vpd')] # forc.iloc[d, 13]
+                rg   = forc.iloc[d, forc.columns.get_loc('Rg')]  # forc.iloc[d, 8]
+                par  = forc.iloc[d, forc.columns.get_loc('Par')] # forc.iloc[d, 10]
+                prec = forc.iloc[d, forc.columns.get_loc('Prec')]/86400.
     
                 potinf, trfall, interc, evap, ET, transpi, efloor, MBE, SWE = cpy.run_timestep(doy, dtc, ta, prec, rg, par, vpd, 
                                                                 hc=hc, LAIconif=lai, Rew=reww, beta=moss.Ree) # kaikki (käytä tätä)

@@ -15,7 +15,8 @@ from scipy.misc import derivative
 from scipy.interpolate import InterpolatedUnivariateSpline as interS
 from pyproj import Proj, transform
 
-
+class SetupException (Exception):
+    pass
 
 def peat_hydrol_properties(x, unit='g/cm3', var='bd', ptype='A'):
     """
@@ -235,7 +236,7 @@ def potential_peat_heterotrophic_respiration(T, sfc, V):
                                                                         #return: final converstaion into kg/ha/day
     return HetCO2*86400.*10000.
 
-def read_FMI_weather(ID, start_date,end_date, sourcefile=None):
+def read_FMI_weather(ID, start_date, end_date, sourcefile=None):
     """ 
     reads FMI interpolated daily weather data from file 
     IN: 
@@ -244,8 +245,10 @@ def read_FMI_weather(ID, start_date,end_date, sourcefile=None):
         end_date - 'yyyy-mm-dd'
     OUT:
         fmi - pd.dataframe with datetimeindex
-            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin','Prec','Rg','h2o','dds','Prec_a','Par','RH','esa','VPD','doy']
-            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa], Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
+            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin','Prec','Rg',
+                         'h2o','dds','Prec_a','Par','RH','esa','VPD','doy']
+            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa], Prec, Prec_a[mm], Rg,
+                   Par[Wm-2],lon,lat[deg]
     """
     
     #OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
@@ -261,57 +264,81 @@ def read_FMI_weather(ID, start_date,end_date, sourcefile=None):
     #-global radiation (per day in kJ/m2)
     #-H2O partial pressure (hPa)
 
-    ID=0
+    #ID=0
     print (' + Reading meteorological input file from ')
     print ('    -', sourcefile)
-    ID=0
-    #import forcing data
-    #fmi=pd.read_csv(sourcefile, sep=';', header='infer', usecols=['OmaTunniste','Kunta','aika','longitude','latitude','t_mean','t_max','t_min',\
-    #'rainfall','radiation','hpa'],parse_dates='aika')
-    #fmi=pd.read_csv(sourcefile, sep=';', header='infer', usecols=['OmaTunniste','Kunta','aika','longitude','latitude','t_mean','t_max','t_min','rainfall','radiation','hpa'])
-    #time=pd.to_datetime(fmi['aika'],format='%Y%m%d')
+    #ID=0
 
-    fmi=pd.read_csv(sourcefile, sep=';', header='infer', 
-                    usecols=['OmaTunniste','Kunta','aika','longitude','latitude','t_mean','t_max','t_min','rainfall',\
-                             'radiation','hpa'], encoding= 'ISO-8859-1')
- 
-    
-    #print pd.to_datetime(fmi['aika'][0], format="%Y%m%d")
-    #print pd.tseries.tools.to_datetime(fmi['aika'][0], format="%Y%m%d")
-    time=pd.to_datetime(fmi['aika'],format='%Y%m%d')
-    
-    fmi.index=time
-    fmi=fmi.rename(columns={'OmaTunniste': 'ID', 'longitude':'lon','latitude':'lat','t_mean':'T','t_max':'Tmax','t_min':'Tmin','rainfall':'Prec',\
-        'radiation':'Rg', 'hpa':'h2o'})
+    ## removed 'OmaTunniste', not sure if it is needed
+    fi_colnames = ['Kunta','aika','longitude','latitude',
+                   't_mean','t_max','t_min','rainfall','radiation','hpa']
 
-    
-    fmi['h2o']=1e-1*fmi['h2o'] #hPa-->kPa
-    fmi['Rg']=1e3/86400.0*fmi['Rg'] #kJ/m2/d-1 to Wm-2 
-    fmi['Par']=0.5*fmi['Rg']
+    ## removed 'id', not sure if it is needed
+    en_colnames = ['site','time','longitude','latitude',
+                   't_mean','t_max','t_min','rainfall','radiation','hpa']
 
-    #saturated vapor pressure    
-    esa=0.6112*np.exp((17.67*fmi['T'])/ (fmi['T'] +273.16 -29.66))  #kPa
-    vpd=esa - fmi['h2o']; #kPa   
-    vpd[vpd<0]=1e-5
-    rh=100.0*fmi['h2o']/esa;
-    rh[rh<0]=1e-6; rh[rh>100]=100.0
+    first_line = None
+    with open(sourcefile) as f:
+        first_line = f.readline()
+
+    ## note: original reader specified: encoding= 'ISO-8859-1'
+    ## in case you still use such antiquated encoding, you may need to add it to the
+    ## pandas.read_csv()s, preferably with encoding detection via chardet before that.
+    if all([k in first_line for k in fi_colnames]):
+        fmi = pd.read_csv(sourcefile, sep=None, usecols=fi_colnames, engine='python')
+        time = pd.to_datetime(fmi['aika'],format='%Y%m%d')
+        fmi.index = time
+        fmi = fmi.rename(columns={'aika': 'time', 'Kunta': 'site'})
+    elif all([k in first_line for k in en_colnames]):
+        fmi = pd.read_csv(sourcefile, sep=None, usecols=en_colnames, engine='python')
+        time = pd.to_datetime(fmi['time'],format='%Y%m%d')
+        fmi.index = time
+    else:
+        raise SetupException("weather file " + sourcefile +
+                             " is missing excepted column names")
+
+    ## removed 'OmaTunniste': 'ID',
+    fmi = fmi.rename(columns={'longitude':'lon',
+                              'latitude':'lat',
+                              't_mean':'T',
+                              't_max':'Tmax',
+                              't_min':'Tmin',
+                              'rainfall':'Prec',
+                              'radiation':'Rg',
+                              'hpa':'h2o'})
+
+    ## checking that radiation values are strictly positive
+    ## TODO: should in fact check validity of all input data
+    if((fmi['Rg'].values <= 0.0).any()):
+        print("warning: replacing zero radiation values with 1.0")
+        fmi[fmi['Rg'] <= 0.0] = 1.0
+
+    fmi['h2o'] = 1.0e-1 * fmi['h2o']      # hPa-->kPa
+    fmi['Rg'] = 1.0e3/86400.0 * fmi['Rg'] # kJ/m2/d-1 to Wm-2 
+    fmi['Par'] = 0.5 * fmi['Rg']
+
+    ## saturated vapor pressure    
+    esa        = 0.6112*np.exp((17.67*fmi['T'])/(fmi['T'] + 273.16 - 29.66))  #kPa
+    vpd        = esa - fmi['h2o']; #kPa   
+    vpd[vpd<0] = 1.0e-5
+    rh         = 100.0*fmi['h2o']/esa;
+    rh[rh<0]   = 1e-6; rh[rh>100]=100.0
                 
-    fmi['RH']=rh;
-    fmi['esa']=esa;
-    fmi['vpd']=vpd
-    fmi['doy']=fmi.index.dayofyear
-    fmi=fmi.drop(['aika'],1)
-
-
+    fmi['RH']  = rh;
+    fmi['esa'] = esa;
+    fmi['vpd'] = vpd
+    fmi['doy'] = fmi.index.dayofyear
+    fmi        = fmi.drop(['time'],1)
 
     #replace nan's in prec with 0.0
     fmi['Prec'].fillna(value=0.0)    
     #del dat, fields, n, k, time
     
-    #get desired period
-    fmi=fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
-    if ID >0:
-        fmi=fmi[fmi['ID']==ID]
+    ## get desired period
+    fmi = fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
+    ## note: don't know why this is needed, removing for now
+    ##if ID > 0:
+    ##    fmi=fmi[fmi['ID']==ID]
 
     return fmi
     
@@ -468,27 +495,49 @@ def get_mese_scen(ifile):
     return df
 
 
-def get_motti(ifile, return_spe = False):
-    #---read the Motti-simulation to be used as a basis for the Susi-simulation
+def get_motti(ifile, return_species_number = False):
+    """read the Motti-simulation to be used as a basis for the Susi-simulation"""
 
-    cnames=['yr', 'age', 'N', 'BA', 'Hg', 'Dg', 'hdom', 'vol', 'logs', 'pulp', 'loss', 'yield','mortality', 
-            'stempulp', 'stemloss', 'branch_living', 'branch_dead', 'leaves', 'stump', 'roots_coarse', 'roots_fine']
-    df = pd.read_excel(ifile, sheet_name=0, usecols=range(22), skiprows=1, header=None )
-    df = df.drop([0], axis=1)
-    df.columns=cnames
+    csv_extensions = [".csv",".CSV"]
+    xls_extensions = [".xls",".XLS","xlsx","XLSX"]
 
-    cname=['idSpe']
-    df2 = pd.read_excel(ifile, sheet_name=1, usecols=[4], skiprows=1, header=None )
-    df2.columns = cname
+    cnames = ['yr', 'age', 'N', 'BA', 'Hg', 'Dg', 'hdom', 'vol', 'logs',
+              'pulp', 'loss', 'yield','mortality', 'stempulp', 'stemloss',
+              'branch_living', 'branch_dead', 'leaves', 'stump', 'roots_coarse',
+              'roots_fine']
+
+    species_number = -1 ## return -1 if not possible to infer
+    if ifile[-4:] in csv_extensions:
+        df = pd.read_csv(ifile)
+        if not set(cnames).issubset(df.columns):
+            raise SetupException("stand file " + ifile +
+                                 " does not have the expected columns")
+    elif ifile[-4:] in xls_extensions:
+        df = pd.read_excel(ifile, sheet_name=0, usecols=range(22), skiprows=1, header=None)
+        df = df.drop([0], axis=1)
+        df.columns = cnames
+        try:
+            cname=['idSpe']
+            df2 = pd.read_excel(ifile, sheet_name=1, usecols=[4], skiprows=1, header=None)
+            df2.columns = cname
+        except:
+            pass
+        else:
+            species_number = df2['idSpe'][0]
+    else:
+        raise SetupException("the stand file extension should be one " +
+                             "of (.csv, .CSV, .xls, .XLS)")
+
+    df = df[df['age']!=0] # remove rows with zero age
+
+    ## note: not sure when the following would apply, disabling for now
+    ## find thinnings and add a small time to lines with the age to enable interpolation
+    ##steps = np.array(np.diff(df['age']), dtype=float)
+    ##idx = np.ravel(np.argwhere(steps<1.))+1
+    ##df['age'][idx]=df['age'][idx]+5./365.
     
-    #---- find thinnings and add a small time to lines with the age to enable interpolation---------
-    df = df[df['age']!=0]    
-    df = df[df['age']!=0]    
-    steps = np.array(np.diff(df['age']), dtype=float)
-    idx = np.ravel(np.argwhere(steps<1.))+1
-    df['age'][idx]=df['age'][idx]+5./365.
-    if return_spe: 
-        return df, df2['idSpe'][0]
+    if return_species_number:
+        return df, species_number
     else:
         return df
 
@@ -617,22 +666,24 @@ def motti_development(spara, a_arr, ifile):
             K to volume
     """
     species_codes ={1:'Pine', 2:'Spruce', 3:'Birch'}
-    df, sp = get_motti(ifile, return_spe=True)
+    df, sp = get_motti(ifile, return_species_number=True)
     spe = spara['species']
-    if (sp < 3):
-        if spe != species_codes[sp]:
-            print ('Species mismatch: check Motti simulation and species code in stand parameters')
-            print ('Species code in ' +  ifile +  'is ' + str(sp))
-            print ('Species in parameter file is ' + spe)
-            #import sys; sys.exit()
-    if (sp > 3) and ((spe == 'Pine') or (spe=='Spruce')):
-            print ('Species mismatch: check Motti simulation and species code in stand parameters')
-            print ('Species code in ' +  ifile +  'is ' + str(sp))
-            print ('Species in parameter file is ' + spe)
 
-            #import sys; sys.exit()
+    ## added test for -1 returned by get_motti, with pass
+    ## note: what if sp == 3 ?
+    if sp < 0:
+        pass
+    elif sp < 3 and (spe != species_codes[sp]):
+        print('Species mismatch: check Motti simulation and species code in stand parameters')
+        print('Species code in ' +  ifile +  'is ' + str(sp))
+        print('Species in parameter file is ' + spe)
+    elif sp > 3 and ((spe == 'Pine') or (spe=='Spruce')):
+        print('Species mismatch: check Motti simulation and species code in stand parameters')
+        print('Species code in ' +  ifile +  'is ' + str(sp))
+        print('Species in parameter file is ' + spe)
         
-    #---Nutrient concentrations in tree biomass components: Palviainen & Finer 2012 Eur J For Res 131: 945-964
+    #---Nutrient concentrations in tree biomass components:
+    # Palviainen & Finer 2012 Eur J For Res 131: 945-964
     #---Concentrations in mg/g
     nuts = {'Pine':{
                 'Stem':{'N':1.17, 'P':0.08, 'K':0.45},
@@ -645,42 +696,56 @@ def motti_development(spara, a_arr, ifile):
                 'Crown':{'N':9.7, 'P':0.86, 'K':3.08}
                     }
             }
-    retrans = {'N': 0.69, 'P': 0.73, 'K':0.8}     #Nieminen Helmisaari 1996 Tree Phys
-    #longevityLeaves = {'Pine':4., 'Spruce':5., 'Birch':1.} #yrs, life span of leaves and fine roots        
-    longevityLeaves = {'Pine':3., 'Spruce':4., 'Birch':1.} #yrs, life span of leaves and fine roots    
-    longevityFineRoots ={'Pine':1., 'Spruce':1., 'Birch':1.}    #Yuan & Chen 2010, turnover 1.07 times per year    
-    longevityBranch ={'Pine':22., 'Spruce':22., 'Birch':22.}   #Pine Mäkinen 1999
+
+    # Nieminen Helmisaari 1996 Tree Phys
+    retrans = {'N': 0.69, 'P': 0.73, 'K':0.8}
+    #yrs, life span of leaves and fine roots
+    #longevityLeaves = {'Pine':4., 'Spruce':5., 'Birch':1.}
+    # yrs, life span of leaves and fine roots
+    longevityLeaves = {'Pine':3.0, 'Spruce':4.0, 'Birch':1.0}
+    # Yuan & Chen 2010, turnover 1.07 times per year
+    longevityFineRoots = {'Pine':1.0, 'Spruce':1.0, 'Birch':1.0}
+    # Pine Mäkinen 1999
+    longevityBranch = {'Pine':22.0, 'Spruce':22.0, 'Birch':22.0}
     
-    #---create interpolation functions to follow the Motti-defined framework of forest development
+    #create interpolation functions to follow Motti-defined framework of forest development
     x = np.insert(df['age'].values, 0, 0.)
     h = np.insert(df['hdom'].values, 0, 0.)
     ageToHdom = interp1d(x, h, fill_value='extrapolate')
 
-    sla= {'Pine': 6.8, 'Spruce': 7.25, 'Birch':14.0}             #Härkönen et al. 2015 BER 20, 181-195      
-    leaf = np.insert(df['leaves'].values/10. * sla[spe], 0, 0.)
-    ageToLAI= interp1d(x,leaf,fill_value='extrapolate')    
-    
-    yi = np.insert(df['yield'].values, 0, 0.)
+    #Härkönen et al. 2015 BER 20, 181-195
+    sla = {'Pine': 6.8, 'Spruce': 7.25, 'Birch':14.0}
+
+    leaf = np.insert(df['leaves'].values/10.0 * sla[spe], 0, 0.0)
+    ageToLAI = interp1d(x,leaf,fill_value='extrapolate')
+
+    yi = np.insert(df['yield'].values, 0, 0.0)
     ageToYield = interp1d(x,yi,fill_value='extrapolate')
     
-    v = np.insert(df['vol'].values, 0, 0.)
+    v = np.insert(df['vol'].values, 0, 0.0)
     ageToVol = interp1d(x,v,fill_value='extrapolate')
 
-    ba = np.insert(df['BA'].values, 0, 0.)
+    ba = np.insert(df['BA'].values, 0, 0.0)
     ageToBa = interp1d(x,ba,fill_value='extrapolate')
     
-    #--- create interpolation functions to follow the Motti-defined framework of forest development
-    logs = np.insert(df['logs'].values, 0, 0.)   
+    #create interpolation functions to follow Motti-defined framework of forest development
+    logs = np.insert(df['logs'].values, 0, 0.0)   
     volToLogs = interp1d(v,logs,fill_value='extrapolate')
 
-    p = np.insert(df['pulp'].values, 0, 0.)   
+    p = np.insert(df['pulp'].values, 0, 0.0)
     volToPulp = interp1d(v,p,fill_value='extrapolate')
 
 
-    rho = {'Pine': 400., 'Spruce': 380., 'Birch':480.} #kg/m3
-    bm = rho[spe]*df['yield'].values + (df['branch_living'].values + df['branch_dead'].values + \
-             df['leaves'].values + df['stump'].values + df['roots_coarse'].values + df['roots_fine'].values)*1000. #unit from tn/ha to kg/ha   
-    bm = np.insert(bm, 0, 0.)
+    rho = {'Pine': 400.0, 'Spruce': 380.0, 'Birch':480.0} #kg/m3
+
+    #unit from tn/ha to kg/ha
+    bm = rho[spe]*df['yield'].values + (df['branch_living'].values +
+                                        df['branch_dead'].values +
+                                        df['leaves'].values +
+                                        df['stump'].values +
+                                        df['roots_coarse'].values +
+                                        df['roots_fine'].values)*1000.0
+    bm = np.insert(bm, 0, 0.0)
     ageToBm = interp1d(x,bm, fill_value='extrapolate')
     bmToYi= interp1d(bm,yi, fill_value='extrapolate')
     bmToBa= interp1d(bm,ba, fill_value='extrapolate')
@@ -692,17 +757,20 @@ def motti_development(spara, a_arr, ifile):
     bmToLAI = interp1d(bm, lmass* sla[spe]/10., fill_value='extrapolate')
     bmToHdom = interp1d(bm,h, fill_value='extrapolate')
     yiToBm = interp1d(yi, bm, fill_value='extrapolate')
-    stems = np.insert(df['N'].values, 0, df['N'].values[0] )
+    stems = np.insert(df['N'].values, 0, df['N'].values[0])
     bmToStems =interp1d(bm,stems, fill_value='extrapolate')
     ageToStems = interp1d(x,stems, fill_value='extrapolate')
-    
-    bmStemlike = rho[spe]*df['yield'].values + (df['stump'].values + df['roots_coarse'].values)*1000.   #stemlike biomass fraction for nutrient computation kg/ha
-    bmCrownlike = (df['branch_living'].values + df['branch_dead'].values + \
-             df['leaves'].values +  df['roots_fine'].values)*1000.                              #crownlike biomass components for nutrient computation kg/ha
-    bmStemlike =np.insert(bmStemlike,0,0.)
-    bmCrownlike =np.insert(bmCrownlike,0,0.)
-    ageToStemlike=interp1d(x,bmStemlike, fill_value='extrapolate' )             
-    ageToCrownlike=interp1d(x,bmCrownlike, fill_value='extrapolate' )             
+
+    #stemlike biomass fraction for nutrient computation kg/ha
+    bmStemlike = rho[spe]*df['yield'].values + (df['stump'].values +
+                                                df['roots_coarse'].values)*1000.0
+    #crownlike biomass components for nutrient computation kg/ha
+    bmCrownlike = (df['branch_living'].values + df['branch_dead'].values + 
+                   df['leaves'].values +  df['roots_fine'].values)*1000.0
+    bmStemlike = np.insert(bmStemlike,0,0.0)
+    bmCrownlike = np.insert(bmCrownlike,0,0.0)
+    ageToStemlike = interp1d(x,bmStemlike, fill_value='extrapolate')
+    ageToCrownlike = interp1d(x,bmCrownlike, fill_value='extrapolate')
     
     #bmLeavesFineRoots = (df['leaves'].values +  df['roots_fine'].values)*1000.
     #bmLeavesFineRoots=np.insert(bmLeavesFineRoots, 0, 0.)
@@ -714,16 +782,16 @@ def motti_development(spara, a_arr, ifile):
     #bm2 = np.insert(bm2, 0, 0.)
     #bmToLitter = interp1d(bm2, litter2, fill_value='extrapolate')
 
-    bmLeaves = (df['leaves'].values +  df['roots_fine'].values)*1000.
-    bmFineRoots = (df['roots_fine'].values)*1000.
-    bmLeaves=np.insert(bmLeaves, 0, 0.)
-    bmFineRoots=np.insert(bmFineRoots, 0, 0.)
-    bmBranch = (df['branch_living'].values)*1000.
-    bmBranch=np.insert(bmBranch, 0,0.)
-    
-    ageToLeaves=interp1d(x, bmLeaves, fill_value ='extrapolate')
-    ageToFineRoots=interp1d(x, bmFineRoots, fill_value ='extrapolate')
-    ageToBranch=interp1d(x, bmBranch, fill_value ='extrapolate')
+    bmLeaves = (df['leaves'].values +  df['roots_fine'].values)*1000.0
+    bmFineRoots = (df['roots_fine'].values)*1000.0
+    bmLeaves = np.insert(bmLeaves, 0, 0.0)
+    bmFineRoots = np.insert(bmFineRoots, 0, 0.0)
+    bmBranch = (df['branch_living'].values)*1000.0
+    bmBranch = np.insert(bmBranch, 0, 0.0)
+
+    ageToLeaves = interp1d(x, bmLeaves, fill_value ='extrapolate')
+    ageToFineRoots = interp1d(x, bmFineRoots, fill_value ='extrapolate')
+    ageToBranch = interp1d(x, bmBranch, fill_value ='extrapolate')
     litter = ageToLeaves(a_arr)/longevityLeaves[spe]*np.gradient(a_arr) + \
              ageToFineRoots(a_arr)/longevityFineRoots[spe]*np.gradient(a_arr) + \
                  ageToBranch(a_arr)/longevityBranch[spe]*np.gradient(a_arr)    #Litterfall kg/ha in timestep
