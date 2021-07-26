@@ -400,7 +400,7 @@ def fig_stand_growth_node(rounds, ageSim, start_yr, end_yr, ageToVol, agearray,v
     start = max(0.0, ageSim-3.)    
     x=np.arange(start, ageSim+length,0.1)
     y = ageToVol(x)
-    gr_age=np.arange(ageSim, ageSim+length, 0.1)
+    gr_age=np.arange(ageSim, ageSim+length+0.1, 0.1)
     gr=np.gradient(ageToVol(gr_age))
     gr_up = ageToVol(gr_age) + np.cumsum(gr)*(1.+gr_limit)
     gr_low= ageToVol(gr_age) - np.cumsum(gr)*(1.-gr_limit)
@@ -409,8 +409,8 @@ def fig_stand_growth_node(rounds, ageSim, start_yr, end_yr, ageToVol, agearray,v
     plt.plot(gr_age, gr_up, 'g-')
     plt.plot(gr_age, gr_low, 'g-')
     plt.fill_between(gr_age, gr_low,gr_up,color='gray', alpha=0.3)    
-    age = np.arange(ageSim,ageSim+length,1)+1.
-    
+    age = np.arange(ageSim-1,ageSim+length,1)
+ 
     colors = ['blue', 'red', 'green', 'yellow', 'cyan', 'magenta' ]
     rnds, yrs, nodes = np.shape(vols)
     for r in range(rnds):
@@ -418,13 +418,17 @@ def fig_stand_growth_node(rounds, ageSim, start_yr, end_yr, ageToVol, agearray,v
         up = np.max(vtmp.T, axis=0)
         down = np.min(vtmp.T, axis=0)
         mean = np.mean(vtmp.T, axis=0)
+        up = np.insert(up, 0, ageToVol(ageSim))
+        down = np.insert(down, 0, ageToVol(ageSim))        
+        mean = np.insert(mean, 0, ageToVol(ageSim))
         #plt.plot(age, up , color= colors[r], alpha=0.25)
         #plt.plot(age, down, color= colors[r], alpha=0.25)
-        plt.plot(age, mean, color= colors[r], linewidth = 3)
-        plt.fill_between(age, up, down, color=colors[r], alpha = 0.2, label=name[r])
+        plt.plot(age+1, mean, color= colors[r], linewidth = 3)
+        plt.fill_between(age+1, up, down, color=colors[r], alpha = 0.2, label=name[r])
     plt.legend(loc='upper left')
-    plt.xlabel('Puuston ikä, vuotta', fontsize = 18)
-    plt.ylabel('Tilavuus, $m^{3}$ $ha^{-1}$', fontsize = 18)
+    plt.xlabel('Stand age, yrs', fontsize = 18)
+    plt.ylabel('Volume, $m^{3}$ $ha^{-1}$', fontsize = 18)
+
     
     plt.subplot(212)
     rnds, days, nodes = np.shape(dwts)
@@ -439,8 +443,8 @@ def fig_stand_growth_node(rounds, ageSim, start_yr, end_yr, ageToVol, agearray,v
         plt.plot(agedays, mean, color= colors[r], linewidth = 1)
         plt.fill_between(agedays, up, down, color=colors[r], alpha = 0.2, label=name[r])
     plt.legend(loc='lower left')
-    plt.xlabel('Aika, päivää', fontsize = 18)
-    plt.ylabel('Pohjaveden syvyys,m', fontsize = 18)
+    plt.xlabel('Time, days', fontsize = 18)
+    plt.ylabel('Water level,m', fontsize = 18)
     
     
     plt.show()
