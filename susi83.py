@@ -29,7 +29,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
              photosite=None, folderName=None, hdomSim=None, volSim=None, ageSim=None, 
              sarkaSim=None, sfc=None, susiPath = None, simLAI=None, kaista=None, sitename=None): 
     
-    print ('******** Susi-peatland simulator v.8.0 (2020) c Ari Laurén *********************')
+    print ('******** Susi-peatland simulator v.9 (2021) c Ari Laurén *********************')
     print ('           ')    
     print ('Initializing stand and site:') 
      
@@ -225,7 +225,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             Nleach = Nleach + Nstot - Ns
             Pleach = Pleach + Pstot - Ps
             Kleach = Kleach + Kstot - Ks
-            doc, hmw = docs.doc_release(df_peat_temperatures[str(yr)], dfwt[str(yr)])            
+            doc, hmw = docs.doc_release(df_peat_temperatures.loc[str(yr)], dfwt.loc[str(yr)])            
             DOCleach = DOCleach + doc
             HMWleach = HMWleach + hmw
 
@@ -234,7 +234,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             Prelease = Prelease + Ps
             Krelease = Krelease + Ks
             Crelease = Crelease + Rhet*(12./44)                                 # CO2 to C, annual sum, nodewise in kg C ha-1
-            NPP, NPP_pot = assimilation_yr(photopara, forc[str(yr)], dfwt[str(yr)], dfafp[str(yr)], leaf_mass, hc, species = spara['species'])     # NPP nodewise, kg organic matter /ha /yr sum over the year
+            NPP, NPP_pot = assimilation_yr(photopara, forc.loc[str(yr)], dfwt.loc[str(yr)], dfafp.loc[str(yr)], leaf_mass, hc, species = spara['species'])     # NPP nodewise, kg organic matter /ha /yr sum over the year
 
             bm_change =  NPP - n_deadtrees/stems * b - bmToLitter(b)*365.
             bm_change_pot =  NPP_pot - n_deadtrees/stems * b - bmToLitter(b)*365.

@@ -13,8 +13,7 @@ import matplotlib.pylab as plt
 import pickle
 from scipy.misc import derivative
 from scipy.interpolate import InterpolatedUnivariateSpline as interS
-from pyproj import Proj, transform
-
+from pyproj import CRS, Transformer
 
 
 def peat_hydrol_properties(x, unit='g/cm3', var='bd', ptype='A'):
@@ -482,11 +481,12 @@ def get_motti(ifile, return_spe = False):
     df2.columns = cname
     
     #---- find thinnings and add a small time to lines with the age to enable interpolation---------
-    df = df[df['age']!=0]    
-    df = df[df['age']!=0]    
+    df = df.loc[df['age']!=0]    
+    
     steps = np.array(np.diff(df['age']), dtype=float)
     idx = np.ravel(np.argwhere(steps<1.))+1
     df['age'][idx]=df['age'][idx]+5./365.
+    
     if return_spe: 
         return df, df2['idSpe'][0]
     else:
@@ -964,10 +964,10 @@ def heterotrophic_respiration_yr(t5, yr, dfwt, dfair_r, v, spara):
             bd = bd_d[sfc]
         else:
             bd = np.mean(spara['bd top'])
-        air_ratio = dfair_r[str(yr)]
+        air_ratio = dfair_r.loc[str(yr)]
         wt = dfwt[str(yr)+'-05-01':str(yr)+'-10-31'].mean().values*-100.     #.values[:-1])
         
-        T5 = t5[str(yr)][0]
+        T5 = t5.loc[str(yr)][0]
         
         B = 350. ; T5zero = -46.02; T5ref = 10.
         T5 = np.minimum(T5, 16.)
@@ -991,10 +991,10 @@ def heterotrophic_respiration_yr_bck(forc, yr, dfwt, dfair_r, v, spara):
             bd = bd_d[sfc]
         else:
             bd = np.mean(spara['bd top'])
-        air_ratio = dfair_r[str(yr)]
-        wt = dfwt[str(yr)+'-05-01':str(yr)+'-10-31'].mean().values*-100.     #.values[:-1])
+        air_ratio = dfair_r.loc[str(yr)]
+        wt = dfwt.loc[str(yr)+'-05-01':str(yr)+'-10-31'].mean().values*-100.     #.values[:-1])
         
-        T5 = forc[str(yr)]['T']
+        T5 = forc.loc[str(yr)]['T']
         
         B = 350. ; T5zero = -46.02; T5ref = 10.
         T5 = np.minimum(T5, 16.)
@@ -1065,15 +1065,12 @@ def understory_uptake(n, lat, lon, barea0, barea1, stems0, stems1, yi0, yi1, sp,
     ix_pine_bog = np.where(np.equal(smc, 3))
     ix_open_peat = np.where(np.equal(smc, 4))
     
-    #---------------------------------------
-    #ATTN: change here a module from NutSpaFHy (Auran tekemä muokkaus)
-    #latitude = 0.0897*lat/10000. + 0.3462                                       #approximate conversion to decimal degrees within Finland,  N
-    #longitude = 0.1986*(lon-3000000)/10000. + 17.117                            #approximate conversion to decimal degrees within Finland in degrees E
+    #---------------------------------------    
+    inProj = CRS('epsg:3067')
+    outProj = CRS('epsg:4326')
+    transformer = Transformer.from_crs(inProj, outProj)
+    latitude, longitude = transformer.transform(lon, lat)
     
-    inProj = Proj(init='epsg:3067')
-    outProj = Proj(init='epsg:4326')
-    longitude,latitude = transform(inProj,outProj,lon,lat)
-
     drain_s = 4      # x8 drainage status, default value 4
 
     #---------------------------------------

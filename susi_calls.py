@@ -52,7 +52,8 @@ def call_local_susi():
                                                                               
             
     v_ini, v, iv5,  cbt, dcbt, cb, dcb, w,dw,logs,pulp, dv,dlogs,dpulp,yrs, bmgr,  \
-                                    Nleach, Pleach, Kleach, DOCleach, runoff = run_susi(forc, wpara, cpara, 
+                                    Nleach, Pleach, Kleach, DOCleach, runoff, \
+                                    nrelease, prelease,krelease = run_susi(forc, wpara, cpara, 
                                     org_para, spara, outpara, photopara, start_yr, end_yr, wlocation = 'undefined', 
                                     mottifile=mottifile, peat= 'other', photosite='All data', 
                                     folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=sfc, susiPath=susiPath)
