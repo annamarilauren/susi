@@ -150,6 +150,7 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'outfolder':folderName, 
         #'outfolder': newfolder(folderName),
         'ofile': 'out2.xls', 'tsfile': 'ts', 'gwl_file': 'gwl', 'gr_file': 'gr.xls', 'runfile': 'roff',
+        'c_and_nut_file': 'c_and_nut_bals.xlsx',
         'startday': 1, 'startmonth':7, # Päivä, josta keskiarvojen laskenta alkaa
         'endday':31, 'endmonth':8, # Päivä, johon keskiarvojen laskenta loppuu
         'figs': False, 'to_file':False, 'static stand':False, 'hydfig':False,

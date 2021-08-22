@@ -19,7 +19,7 @@ from docclass import DocModel
 
 import susi_io
 from susi_utils import read_FMI_weather
-from susi_utils import heterotrophic_respiration_yr
+from susi_utils import heterotrophic_respiration_yr, CH4_flux_yr
 from susi_utils import nutrient_release,  rew_drylimit, nutrient_demand, nut_to_vol
 from susi_utils import motti_development,  get_motti, assimilation_yr
 from susi_utils import get_mese_input, get_mese_out, understory_uptake, get_temp_sum
@@ -97,22 +97,36 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     co2release = np.zeros((rounds, int(length/dt)), dtype=float)
     peat_temperatures = np.zeros((rounds, int(length/dt), spara['nLyrs']))     # daily peat temperature profiles
 
-    npps = np.zeros((rounds, yrs,n), dtype=float)    
-    het = np.zeros((rounds, yrs,n), dtype=float)
-    growths = np.zeros((rounds,yrs,n), dtype=float)
-    g_npps = np.zeros((rounds,yrs,n), dtype=float)
-    g_npps_pot = np.zeros((rounds,yrs,n), dtype=float)
-    g_nuts = np.zeros((rounds,yrs,n), dtype=float)
-    g_Ns = np.zeros((rounds,yrs,n), dtype=float)
-    g_Ps = np.zeros((rounds,yrs,n), dtype=float)
-    g_Ks = np.zeros((rounds,yrs,n), dtype=float)
-    yis = np.zeros((rounds,yrs,n), dtype=float)
-    vols = np.zeros((rounds,yrs,n), dtype=float)
-    end_vols = np.zeros((rounds, n))    
-    c_bals = np.zeros((rounds, n))
-    c_bals_trees = np.zeros((rounds, n))
-    sdwt = np.zeros((rounds, n))
+    c_bals_yr = np.zeros((rounds, yrs,n), dtype=float)                         # annual spoil/peat C balance in nodes kg C ha-1
+    c_balstrees_yr = np.zeros((rounds, yrs,n), dtype=float)                    # annual stand C balance in nodes kg C ha-1
+    n_export_yr = np.zeros((rounds, yrs,n), dtype=float)                       # annual leaching of N to water course kg ha-1
+    p_export_yr= np.zeros((rounds, yrs,n), dtype=float)
+    k_export_yr= np.zeros((rounds, yrs,n), dtype=float)
+    CH4_yr = np.zeros((rounds, yrs,n), dtype=float)
+    
+    npps = np.zeros((rounds, yrs,n), dtype=float)                              # net primary production kg biomass ha-1 yr-1    
+    het = np.zeros((rounds, yrs,n), dtype=float)                               # heterotrophic respiration kg CO2 ha-1 yr-1
+    growths = np.zeros((rounds,yrs,n), dtype=float)                            # no used
+    g_npps = np.zeros((rounds,yrs,n), dtype=float)                             # stand volume allowed by npp and physical restrictions m3 ha-1
+    g_npps_pot = np.zeros((rounds,yrs,n), dtype=float)                         # potential stand volume allowed by npp alone m3 ha-1 
+    g_nuts = np.zeros((rounds,yrs,n), dtype=float)                             # stand volume allowed by supply of growth-limiting nutrient m3 ha-1
+    g_Ns = np.zeros((rounds,yrs,n), dtype=float)                               # stand volume allowed by supply of N m3 ha-1
+    g_Ps = np.zeros((rounds,yrs,n), dtype=float)                               # stand volume allowed by supply of P m3 ha-1
+    g_Ks = np.zeros((rounds,yrs,n), dtype=float)                               # stand volume allowed by supply of K m3 ha-1
+    yis = np.zeros((rounds,yrs,n), dtype=float)                                # not used
+    vols = np.zeros((rounds,yrs,n), dtype=float)                               # realized stand volumes m3 ha-1
+
+    end_vols = np.zeros((rounds, n), dtype=float)    
+    c_bals = np.zeros((rounds, n), dtype=float)
+    c_bals_trees = np.zeros((rounds, n), dtype=float)
+    sdwt = np.zeros((rounds, n), dtype=float)
+    CH4release = np.zeros((rounds, n), dtype=float)
+    Nrelease = np.zeros((rounds, n), dtype=float)    
+    Prelease = np.zeros((rounds, n), dtype=float)
+    Krelease = np.zeros((rounds, n), dtype=float)
+
     biomass_gr = np.zeros((rounds, n))
+    litterfall_gv_cumul = np.zeros((rounds, n))
     runoff =np.zeros((rounds, int(length/dt)), dtype=float)
     swes = np.zeros((rounds, int(length/dt)), dtype=float)
     
@@ -144,9 +158,6 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
         # ---- Initialize integrative output arrays (outputs in nodewise sums) -------------------------------
         start = 0            
         litter_cumul = np.zeros(n)
-        Nrelease = np.zeros(n)    
-        Prelease = np.zeros(n)
-        Krelease = np.zeros(n)
         Crelease = np.zeros(n)
         Nleach = np.zeros(n)
         Pleach = np.zeros(n)
@@ -215,9 +226,10 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             nup_gv, pup_gv, kup_gv, litterfall_gv, gv_leafmass = understory_uptake(spara['n'], lat, lon, 
                                                             BA0, bmToBa(b), stems0, bmToStems(b), yi0, 
                                                             bmToYi(b), sp, ts, 1, spara['sfc'], ageSim+year)
-
+            litterfall_gv_cumul[r,:] = litterfall_gv_cumul[r,:] + litterfall_gv
             _, co2, Rhet, Rhet_root = heterotrophic_respiration_yr(t5, yr, dfwt, dfair_r, v, spara) #Rhet in kg/ha/yr CO2            
             days = len(co2) 
+            CH4, CH4mean, CH4asCO2eq = CH4_flux_yr(yr, dfwt)                   # annual ch4 nodewise (kg ha-1 yr-1), mean ch4, and mean ch4 as co2 equivalent
             co2release[r,start:start+days] = co2                               # mean daily time series for co2 efflux kg/ ha/day CO2
             Ns,Ps,Ks = nutrient_release(spara['sfc'], Rhet_root, N=spara['peatN'], P=spara['peatP'], K=spara['peatK']) # N P K release in kg/ha/yr                              #supply of N,P,K kg/ha/timestep
             Nstot, Pstot, Kstot = nutrient_release(spara['sfc'], Rhet, N=spara['peatN'], P=spara['peatP'], K=spara['peatK'])
@@ -225,15 +237,21 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             Nleach = Nleach + Nstot - Ns
             Pleach = Pleach + Pstot - Ps
             Kleach = Kleach + Kstot - Ks
+            n_export_yr[r,year,:] = Nstot - Ns
+            p_export_yr[r,year,:] = Pstot - Ps
+            k_export_yr[r,year,:] = Kstot - Ks
+            CH4_yr[r,year,:] = CH4
+            
             doc, hmw = docs.doc_release(df_peat_temperatures.loc[str(yr)], dfwt.loc[str(yr)])            
             DOCleach = DOCleach + doc
             HMWleach = HMWleach + hmw
 
             Ns, Ps, Ks = Ns+spara['depoN'], Ps+spara['depoP'], Ks+spara['depoK']        #decomposition + deposition from Ruoho-Airola et al 2003 Fig.4
-            Nrelease = Nrelease + Ns
-            Prelease = Prelease + Ps
-            Krelease = Krelease + Ks
-            Crelease = Crelease + Rhet*(12./44)                                 # CO2 to C, annual sum, nodewise in kg C ha-1
+            Nrelease[r,:] = Nrelease[r,:] + Ns
+            Prelease[r,:] = Prelease[r,:] + Ps
+            Krelease[r,:] = Krelease[r,:] + Ks
+            Crelease = Crelease + Rhet*(12./44)                                # CO2 to C, annual sum, nodewise in kg C ha-1
+            CH4release[r,:] = CH4release[r,:]  + CH4                                     # Total nodewise CH4 release in the simulation, kg CH4 ha-1 
             NPP, NPP_pot = assimilation_yr(photopara, forc.loc[str(yr)], dfwt.loc[str(yr)], dfafp.loc[str(yr)], leaf_mass, hc, species = spara['species'])     # NPP nodewise, kg organic matter /ha /yr sum over the year
 
             bm_change =  NPP - n_deadtrees/stems * b - bmToLitter(b)*365.
@@ -258,10 +276,17 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             g_nuts[r,yr-start_yr,:] = lim_nut_gr               
             v = np.minimum(lim_nut_gr, g_npp)                                  # new volume as yield 
             
-            BA0 = bmToBa(b); stems0 = bmToStems(b); yi0 = bmToYi(b)            #update old: basal area, stem number, volume
+            BA0 = bmToBa(b) 
+            stems0 = bmToStems(b)
+            yi0 = bmToYi(b)            #update old: basal area, stem number, volume
             vols[r,yr-start_yr,:] = v 
             
             bm_restr = yiToBm(v)                                                
+            
+            #------Annual balances--------------------
+            c_bals_yr[r, year, :] = (bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)    #(rounds, yrs,n)
+            c_balstrees_yr[r, year, :] = ((bm_restr-b) + bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)      # (rounds, yrs,n)
+           
             
             leaf_mass, hc, b = bmToLeafMass(bm_restr), bmToHdom(bm_restr), bm_restr   
             litter_cumul = litter_cumul + bmToLitter(b)*365   
@@ -278,8 +303,8 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
         # Carbon balance of the stand in kg / ha / simulation time
         #docs.draw_doc(sitename, yrs)
         end_vols[r, :] = v
-        c_bals_trees[r, :] = ((b-b_ini) + litter_cumul + bm_deadtrees + litterfall_gv) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
-        c_bals[r, :] = (litter_cumul + bm_deadtrees + litterfall_gv) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
+        c_bals_trees[r, :] = ((b-b_ini) + litter_cumul + bm_deadtrees + litterfall_gv_cumul[r,:]) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
+        c_bals[r, :] = (litter_cumul + bm_deadtrees + litterfall_gv_cumul[r,:]) * 0.5 - Crelease     # in kg C /ha/time, 600 is the contribution of ground vegetation (Minkkinen et al. 20018)
         biomass_gr[r, :] = (b-b_ini) + litter_cumul + bm_deadtrees
         Nout[r, :] = Nleach
         Pout[r, :] = Pleach
@@ -287,7 +312,6 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
         HMWDOCout[r, :] =  HMWleach 
         LMWDOCout[r, :] = DOCleach - HMWleach 
              
-        
 
         v_start = vol[0]*np.ones(n)
         potential_gr = []; phys_restr=[]; chem_restr=[]; N_gr = []; P_gr=[]; K_gr=[]; phys_gr=[]
@@ -336,6 +360,9 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             susi_io.dwt_to_excel(dwts[r,:,:],outpara, scen[r])
             susi_io.runoff_to_excel(runoff[r,:]*1000., swes[r,:], outpara, scen[r])
             #susi_io.write_excel(wlocation, wpara, spara, outpara, LAI, hdom, h0ts_west[0], h0ts_east[0],summer, summer_median_dwt)
+            susi_io.c_and_nut_to_excel(c_bals_yr[r,:,:], c_balstrees_yr[r,:,:], 
+                                       n_export_yr[r,:,:], p_export_yr[r,:,:],
+                                       k_export_yr[r,:,:], outpara, scen[r])
 
         # Change delatas ets to np.mean(deltas), np.mean(ets)        
         if outpara['hydfig']: susi_io.fig_hydro(stp.ele, hts[r,:,:], spara, wpara, wlocation, np.mean(ets*1000., axis=1), forc['Prec'].values, \
@@ -388,13 +415,14 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     kout = [np.mean(Kout[k])/yrs for k in range(rounds)]
     hmwdocout = [np.mean(HMWDOCout[k])/yrs for k in range(rounds)]
     lmwdocout = [np.mean(LMWDOCout[k])/yrs for k in range(rounds)]
+    
     nrelease = [np.mean(Nrelease[k])/yrs for k in range(rounds)]
     prelease = [np.mean(Prelease[k])/yrs for k in range(rounds)]
     krelease = [np.mean(Krelease[k])/yrs for k in range(rounds)]
-
+    ch4release = [np.mean(CH4release[k])/yrs for k in range(rounds)]
     
     
     return vol[0], v_end, (v_end-vol[0])/yrs, cbt, dcbt, cb, dcb,  w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bms/yrs, \
-                    nout, pout, kout, hmwdocout, annual_runoff, nrelease, prelease, krelease 
+                    nout, pout, kout, hmwdocout, annual_runoff, nrelease, prelease, krelease, ch4release 
 
           

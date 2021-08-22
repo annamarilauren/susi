@@ -12,7 +12,6 @@ from susi_para import get_susi_para
 from susi83 import run_susi
 import susi_io
 
-#%%
 def call_local_susi():
     #from dwts_para import para
     """
@@ -53,7 +52,7 @@ def call_local_susi():
         
     v_ini, v, iv5,  cbt, dcbt, cb, dcb, w,dw,logs,pulp, dv,dlogs,dpulp,yrs, bmgr,  \
                                     Nleach, Pleach, Kleach, DOCleach, runoff, \
-                                    nrelease, prelease,krelease = run_susi(forc, wpara, cpara, 
+                                    nrelease, prelease,krelease, ch4release = run_susi(forc, wpara, cpara, 
                                     org_para, spara, outpara, photopara, start_yr, end_yr, wlocation = 'undefined', 
                                     mottifile=mottifile, peat= 'other', photosite='All data', 
                                     folderName=folderName,ageSim=ageSim, sarkaSim=sarkaSim, sfc=sfc, susiPath=susiPath)

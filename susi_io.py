@@ -22,6 +22,27 @@ def runoff_to_excel(runoff, swe, outpara, scen):
     df = pd.DataFrame(data=datadic)
     f = outpara['outfolder']+outpara['runfile'] + '_' + scen+'.xlsx'
     df.to_excel(f)
+
+def c_and_nut_to_excel(c_bals, c_bals_trees,n_export_yr, p_export_yr,
+                       k_export_yr, outpara, scen):
+    data={'c_bals':c_bals, 'c_bals_trees':c_bals_trees, 'n_export_yr': n_export_yr, 
+          'p_export_yr':p_export_yr, 'k_export_yr':k_export_yr}
+    f = outpara['outfolder']+outpara['c_and_nut_file'] + '_' + scen+'.xlsx'
+
+    writer = pd.ExcelWriter(f, engine='xlsxwriter')
+    dfcbals = pd.DataFrame(data['c_bals'])
+    dfcbalstrees = pd.DataFrame(data['c_bals_trees'])
+    dfn = pd.DataFrame(data['n_export_yr'])
+    dfp = pd.DataFrame(data['p_export_yr'])
+    dfk = pd.DataFrame(data['k_export_yr'])
+    
+    dfcbals.to_excel(writer, sheet_name='Peat C balance')
+    dfcbalstrees.to_excel(writer, sheet_name = 'Stand C balance')
+    dfn.to_excel(writer, sheet_name = 'N export')
+    dfp.to_excel(writer, sheet_name = 'P export')
+    dfk.to_excel(writer, sheet_name = 'K export')
+    
+    writer.save()
     
 def output_dwt_growing_season(dwt, length, start_yr, end_yr, start_date, 
                               outpara, wpara, scen):
