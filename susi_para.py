@@ -102,7 +102,13 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'vonP bottom': 8,
         'bd top':None, 'bd bottom': None,
         'peatN':peatN, 'peatP':peatP, 'peatK':peatK,
-        'depoN': 4.0, 'depoP':0.1, 'depoK':0.95*1.1
+        'depoN': 4.0, 'depoP':0.1, 'depoK':0.95*1.1,
+        'fertilization': {
+                'application year': 2006,
+                'N':{'dose': 0.0, 'decay_k': 0.5, 'eff': 0.3},                              # fertilization dose in kg ha-1, decay_k in yr-1
+                'P':{'dose': 0.0, 'decay_k': 0.2, 'eff': 0.3},
+                'K':{'dose': 0.0, 'decay_k': 0.4, 'eff': 0.3}},  
+
          },  
 
 
@@ -122,8 +128,13 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'vonP bottom': 8,
         'bd top':[bd, bd, bd, bd, bd, bd], 'bd bottom': 0.16,
         'peatN':peatN, 'peatP':peatP, 'peatK':peatK,
-        'depoN': 4.0, 'depoP':0.1, 'depoK':1.0
-         },  
+        'depoN': 4.0, 'depoP':0.1, 'depoK':1.0,
+        'fertilization': {
+                'application year': 2006,
+                'N':{'dose': 0.0, 'decay_k': 0.5, 'eff': 0.3},                              # fertilization dose in kg ha-1, decay_k in yr-1
+                'P':{'dose': 0.0, 'decay_k': 0.2, 'eff': 0.3},
+                'K':{'dose': 0.0, 'decay_k': 0.4, 'eff': 0.3}},  
+            },
 
         'develop_scens':{
         'species': 'Pine', 'sfc':sfc, 'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
@@ -141,10 +152,14 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'vonP bottom': 8,
         'bd top':None, 'bd bottom': 0.16,
         'peatN':peatN, 'peatP':peatP, 'peatK':peatK,
-        'depoN': 4.0, 'depoP':0.1, 'depoK':3.0
-         },  
-
-            }
+        'depoN': 4.0, 'depoP':0.1, 'depoK':1.0,
+        'fertilization': {
+                'application year': 2006,
+                'N':{'dose': 0.0, 'decay_k': 0.5, 'eff': 0.3},                              # fertilization dose in kg ha-1, decay_k in yr-1
+                'P':{'dose': 45.0, 'decay_k': 0.2, 'eff': 0.3},
+                'K':{'dose': 100.0, 'decay_k': 0.4, 'eff': 0.3}},  
+            },
+        }
     #------------  Output parameters -------------------------------------------------    
     outpara ={
         'outfolder':folderName, 
@@ -153,7 +168,7 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
         'c_and_nut_file': 'c_and_nut_bals.xlsx',
         'startday': 1, 'startmonth':7, # Päivä, josta keskiarvojen laskenta alkaa
         'endday':31, 'endmonth':8, # Päivä, johon keskiarvojen laskenta loppuu
-        'figs': False, 'to_file':False, 'static stand':False, 'hydfig':False,
+        'figs': True, 'to_file':True, 'static stand':False, 'hydfig':True,
         }    
     photopara = {
               'All data':

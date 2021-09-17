@@ -246,10 +246,22 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             DOCleach = DOCleach + doc
             HMWleach = HMWleach + hmw
 
-            Ns, Ps, Ks = Ns+spara['depoN'], Ps+spara['depoP'], Ks+spara['depoK']        #decomposition + deposition from Ruoho-Airola et al 2003 Fig.4
-            Nrelease[r,:] = Nrelease[r,:] + Ns
-            Prelease[r,:] = Prelease[r,:] + Ps
-            Krelease[r,:] = Krelease[r,:] + Ks
+            #------------------fertilization--------------------------------
+            fert={'N':0.0, 'P':0.0, 'K':0.0}
+            if yr >= spara['fertilization']['application year']:
+                tfert = yr-spara['fertilization']['application year']
+                for nutr in ['N', 'P', 'K']:
+                    nut_efficiency = spara['fertilization'][nutr]['eff']
+                    dose = spara['fertilization'][nutr]['dose']
+                    decay_k =spara['fertilization'][nutr]['decay_k']
+                    fert[nutr] = (dose*np.exp(-decay_k*tfert) - dose*np.exp(-decay_k*(tfert+1)))*nut_efficiency
+
+            #----------------------------------------------------------------
+            Ns, Ps, Ks = Ns+spara['depoN']+fert['N'], Ps+spara['depoP']+fert['P'], Ks+spara['depoK']+fert['K']        #decomposition + deposition from Ruoho-Airola et al 2003 Fig.4
+             
+            Nrelease[r,:] = Nrelease[r,:] + Ns 
+            Prelease[r,:] = Prelease[r,:] + Ps 
+            Krelease[r,:] = Krelease[r,:] + Ks 
             Crelease = Crelease + Rhet*(12./44)                                # CO2 to C, annual sum, nodewise in kg C ha-1
             CH4release[r,:] = CH4release[r,:]  + CH4                                     # Total nodewise CH4 release in the simulation, kg CH4 ha-1 
             NPP, NPP_pot = assimilation_yr(photopara, forc.loc[str(yr)], dfwt.loc[str(yr)], dfafp.loc[str(yr)], leaf_mass, hc, species = spara['species'])     # NPP nodewise, kg organic matter /ha /yr sum over the year
@@ -284,12 +296,12 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             bm_restr = yiToBm(v)                                                
             
             #------Annual balances--------------------
-            c_bals_yr[r, year, :] = (bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)    #(rounds, yrs,n)
-            c_balstrees_yr[r, year, :] = ((bm_restr-b) + bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)      # (rounds, yrs,n)
+            c_bals_yr[r, yr-start_yr, :] = (bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)    #(rounds, yrs,n)
+            c_balstrees_yr[r, yr-start_yr, :] = ((bm_restr-b) + bmToLitter(b)*365. + n_deadtrees/stems * b + litterfall_gv) * 0.5 - Rhet*(12./44)      # (rounds, yrs,n)
            
+            litter_cumul = litter_cumul + bmToLitter(b)*365   
             
             leaf_mass, hc, b = bmToLeafMass(bm_restr), bmToHdom(bm_restr), bm_restr   
-            litter_cumul = litter_cumul + bmToLitter(b)*365   
             n_deadtrees = np.maximum((stems - bmToStems(b)), np.zeros(n))
             bm_deadtrees = bm_deadtrees + n_deadtrees/stems * b
             stems = bmToStems(b)
@@ -297,7 +309,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             year +=1
 
 
-    # ------------------ End biogeochemistry loop-------------------------------------
+    # ------------------ End biogeochemistry loop, end yr loop-------------------------------------
             
         
         # Carbon balance of the stand in kg / ha / simulation time
@@ -334,7 +346,7 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             P_gr.append(p_gr)
             K_gr.append(k_gr)
 
-        print ('***********restrictions*********************')
+        print ('***********Growth restrictions*********************')
         print (np.mean(np.array(potential_gr)), np.mean(np.array(phys_restr)),np.mean(np.array(chem_restr)))
         print ('grs', np.mean(np.array(potential_gr)), np.mean(np.array(vgrowth)), \
                np.mean(np.array(N_gr)), np.mean(np.array(P_gr)), np.mean(np.array(K_gr)), np.mean(np.array(phys_gr)))
@@ -387,19 +399,19 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
     
     gr = np.array([end_vols[k]-end_vols[0] for k in range(rounds)])
     gr = np.array([np.mean(gr[k][fr:to]) for k in range(rounds)])        
-    cbt = np.array([c_bals_trees[k]-0.0 for k in range(rounds)])
+    cbt = np.array([c_bals_trees[k] - 0.0 for k in range(rounds)])
     cbt = np.array([np.mean(cbt[k][fr:to])/yrs for k in range(rounds)]) 
-    dcbt = np.array([c_bals_trees[k]-c_bals[0] for k in range(rounds)])
+    dcbt = np.array([c_bals_trees[k]- c_bals_trees[0] for k in range(rounds)])
     dcbt = np.array([np.mean(dcbt[k][fr:to])/yrs for k in range(rounds)]) 
-    cb = np.array([c_bals[k]-0.0 for k in range(rounds)])
+    cb = np.array([c_bals[k] - 0.0 for k in range(rounds)])
     cb = np.array([np.mean(cb[k][fr:to]) for k in range(rounds)]) 
-    dcb = np.array([c_bals[k]-c_bals[0] for k in range(rounds)])
+    dcb = np.array([c_bals[k]- c_bals[0] for k in range(rounds)])
     dcb = np.array([np.mean(dcb[k][fr:to]) for k in range(rounds)]) 
-    w =  np.array([sdwt[k]-0.0 for k in range(rounds)])
+    w =  np.array([sdwt[k] - 0.0 for k in range(rounds)])
     w = np.array([np.mean(w[k][fr:to]) for k in range(rounds)])                
     dw =  np.array([sdwt[k]-sdwt[0] for k in range(rounds)])
     dw = np.array([np.mean(dw[k][fr:to]) for k in range(rounds)])        
-    v_end = np.array([end_vols[k]-0. for k in range(rounds)])
+    v_end = np.array([end_vols[k] - 0.0 for k in range(rounds)])
     v_end = np.array([np.mean(v_end[k][fr:to]) for k in range(rounds)])
     logs = np.array(volToLogs(v_end))
     pulp = np.array(volToPulp(v_end))        
