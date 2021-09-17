@@ -319,7 +319,9 @@ def nutrient_release(sfc, sfc_specification, co2release, N = None, P = None, K =
     #sfc_specification    1 (Myrtillus I and Vaccinium I) 2 (Myrtillus II, Vaccinium II)
     Nd =  {2: {1:1.9, 2:1.9}, 3: {1:1.6, 2:1.6}, 4: {1:1.4, 2:1.4}, 5: {1:1.2, 2:1.2}}                                       # Mese study: N cont in OM % dm
     Pd =  {2: {1:0.1,2:0.1}, 3: {1:0.08, 2:0.08}, 4: {1:0.06, 2:0.06}, 5: {1:0.05, 2:0.05}}                                    # Mese study: P cont in OM % dm
-    Kd =  {2: {1:0.045, 2:0.041}, 3: {1:0.04, 2:0.38}, 4: {1:0.035, 2:0.035}, 5: {1:0.03, 2:0.03}}                                 # Mese study: P cont in OM % dm (alkuperäinen)
+    Kd =  {2: {1:0.045, 2:0.045}, 3: {1:0.04, 2:0.38}, 4: {1:0.037, 2:0.034}, 5: {1:0.03, 2:0.03}}                                 # Mese study: P cont in OM % dm (alkuperäinen)
+
+    #Kd =  {2: {1:0.045, 2:0.041}, 3: {1:0.04, 2:0.38}, 4: {1:0.035, 2:0.035}, 5: {1:0.03, 2:0.03}}                                 # Mese study: P cont in OM % dm (alkuperäinen)
             
     #Ndeposition = 5.                            #2-6 kg/ha/yr    Palviainen & Finer 2012 
     #Pdeposition = 0.12                         # 0.04-0.25
@@ -358,7 +360,7 @@ def diff_nutrient_release(co2release, vol, spara, wpara, outpara, dates, wlocati
     sfc=spara['sfc']; sfc_specification = spara['sfc_specification']; sp = spara['species']    
     N =   {2: {1:1.9, 2:1.9}, 3: {1:1.6, 2:1.6}, 4: {1:1.4, 2:1.4}, 5: {1:1.2, 2:1.2}}  # Mese study: N cont in OM % dm
     P =  {2: {1:0.1,2:0.1}, 3: {1:0.08, 2:0.08}, 4: {1:0.06, 2:0.06}, 5: {1:0.05, 2:0.05}} # Mese study: P cont in OM % dm
-    K =   {2: {1:0.045, 2:0.041}, 3: {1:0.04, 2:0.38}, 4: {1:0.035, 2:0.035}, 5: {1:0.03, 2:0.03}} # Mese study: P cont in OM % dm (alkuperäinen)
+    Kd =  {2: {1:0.045, 2:0.045}, 3: {1:0.04, 2:0.38}, 4: {1:0.037, 2:0.034}, 5: {1:0.03, 2:0.03}}                                 # Mese study: P cont in OM % dm (alkuperäinen)
     C_in_OM = 0.55                                                              # C content in OM kg kg-1
     CO2_to_C = 12./44.
     Nmicrob = 0.8                                                               # microbial immobilisation    
