@@ -314,19 +314,20 @@ def read_FMI_weather(ID, start_date,end_date, sourcefile=None):
 
     return fmi
     
-def nutrient_release(sfc, co2release, N = None, P = None, K = None):
-    #sfc=spara['sfc']                                                            # soil fertility class    
-    Nd =  {2: 1.9, 3: 1.6, 4: 1.4, 5: 1.2}                                       # Mese study: N cont in OM % dm
-    Pd =  {2: 0.1, 3: 0.08, 4: 0.06, 5: 0.05}                                    # Mese study: P cont in OM % dm
-    Kd =  {2: 0.041, 3: 0.04, 4: 0.035, 5: 0.03}                                 # Mese study: P cont in OM % dm (alkuperäinen)
+def nutrient_release(sfc, sfc_specification, co2release, N = None, P = None, K = None):
+    #sfc                                                                         # soil fertility class 
+    #sfc_specification    1 (Myrtillus I and Vaccinium I) 2 (Myrtillus II, Vaccinium II)
+    Nd =  {2: {1:1.9, 2:1.9}, 3: {1:1.6, 2:1.6}, 4: {1:1.4, 2:1.4}, 5: {1:1.2, 2:1.2}}                                       # Mese study: N cont in OM % dm
+    Pd =  {2: {1:0.1,2:0.1}, 3: {1:0.08, 2:0.08}, 4: {1:0.06, 2:0.06}, 5: {1:0.05, 2:0.05}}                                    # Mese study: P cont in OM % dm
+    Kd =  {2: {1:0.045, 2:0.041}, 3: {1:0.04, 2:0.38}, 4: {1:0.035, 2:0.035}, 5: {1:0.03, 2:0.03}}                                 # Mese study: P cont in OM % dm (alkuperäinen)
             
     #Ndeposition = 5.                            #2-6 kg/ha/yr    Palviainen & Finer 2012 
     #Pdeposition = 0.12                         # 0.04-0.25
     #Kdeposition = 0.5                           # 0.3-0.6 kg/ha/yr    
     
-    if N is None: N = Nd[sfc]
-    if P is None: P = Pd[sfc]
-    if K is None: K = Kd[sfc]
+    if N is None: N = Nd[sfc][sfc_specification]
+    if P is None: P = Pd[sfc][sfc_specification]
+    if K is None: K = Kd[sfc][sfc_specification]
 
     C_in_OM = 0.55                                                              # C content in OM kg kg-1
     CO2_to_C = 12./44.
@@ -354,10 +355,10 @@ def diff_nutrient_release(co2release, vol, spara, wpara, outpara, dates, wlocati
         - scen scenario name
     """
     gr_response=[]
-    sfc=spara['sfc']; sp = spara['species']    
-    N =  {2: 1.9, 3: 1.6, 4: 1.4, 5: 1.2}                                       # Mese study: N cont in OM % dm
-    P =  {2: 0.1, 3: 0.08, 4: 0.06, 5: 0.05}                                    # Mese study: P cont in OM % dm
-    K =  {2: 0.041, 3: 0.04, 4: 0.035, 5: 0.03}                                 # Mese study: P cont in OM % dm (alkuperäinen)
+    sfc=spara['sfc']; sfc_specification = spara['sfc_specification']; sp = spara['species']    
+    N =   {2: {1:1.9, 2:1.9}, 3: {1:1.6, 2:1.6}, 4: {1:1.4, 2:1.4}, 5: {1:1.2, 2:1.2}}  # Mese study: N cont in OM % dm
+    P =  {2: {1:0.1,2:0.1}, 3: {1:0.08, 2:0.08}, 4: {1:0.06, 2:0.06}, 5: {1:0.05, 2:0.05}} # Mese study: P cont in OM % dm
+    K =   {2: {1:0.045, 2:0.041}, 3: {1:0.04, 2:0.38}, 4: {1:0.035, 2:0.035}, 5: {1:0.03, 2:0.03}} # Mese study: P cont in OM % dm (alkuperäinen)
     C_in_OM = 0.55                                                              # C content in OM kg kg-1
     CO2_to_C = 12./44.
     Nmicrob = 0.8                                                               # microbial immobilisation    
@@ -367,9 +368,9 @@ def diff_nutrient_release(co2release, vol, spara, wpara, outpara, dates, wlocati
     print ('¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨')
     for c in range(np.shape(co2release)[0]):
         co2=co2release[c,:]
-        Nt = co2 * CO2_to_C / C_in_OM * N[sfc] / 100. * (1.-Nmicrob)   # Nrelease kg ha-1 day-1
-        Pt = co2 * CO2_to_C / C_in_OM * P[sfc] / 100. * (1.-Pmicrob)   # Prelease kg ha-1 day-1
-        Kt = co2 * CO2_to_C / C_in_OM * K[sfc] / 100. * (1.-Kmicrob)   # Prelease kg ha-1 day-1
+        Nt = co2 * CO2_to_C / C_in_OM * N[sfc][sfc_specification] / 100. * (1.-Nmicrob)   # Nrelease kg ha-1 day-1
+        Pt = co2 * CO2_to_C / C_in_OM * P[sfc][sfc_specification] / 100. * (1.-Pmicrob)   # Prelease kg ha-1 day-1
+        Kt = co2 * CO2_to_C / C_in_OM * K[sfc][sfc_specification] / 100. * (1.-Kmicrob)   # Prelease kg ha-1 day-1
         print ('Released nutrients N', np.round(sum(Nt),2),'P', np.round(sum(Pt), 2),'K', np.round(sum(Kt),2))
         gN = NtoVol(sum(Nt))
         gP = PtoVol(sum(Pt))

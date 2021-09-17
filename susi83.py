@@ -231,8 +231,8 @@ def run_susi(forc, wpara, cpara, org_para, spara, outpara, photopara, start_yr, 
             days = len(co2) 
             CH4, CH4mean, CH4asCO2eq = CH4_flux_yr(yr, dfwt)                   # annual ch4 nodewise (kg ha-1 yr-1), mean ch4, and mean ch4 as co2 equivalent
             co2release[r,start:start+days] = co2                               # mean daily time series for co2 efflux kg/ ha/day CO2
-            Ns,Ps,Ks = nutrient_release(spara['sfc'], Rhet_root, N=spara['peatN'], P=spara['peatP'], K=spara['peatK']) # N P K release in kg/ha/yr                              #supply of N,P,K kg/ha/timestep
-            Nstot, Pstot, Kstot = nutrient_release(spara['sfc'], Rhet, N=spara['peatN'], P=spara['peatP'], K=spara['peatK'])
+            Ns,Ps,Ks = nutrient_release(spara['sfc'],spara['sfc_specification'], Rhet_root, N=spara['peatN'], P=spara['peatP'], K=spara['peatK']) # N P K release in kg/ha/yr                              #supply of N,P,K kg/ha/timestep
+            Nstot, Pstot, Kstot = nutrient_release(spara['sfc'], spara['sfc_specification'],Rhet, N=spara['peatN'], P=spara['peatP'], K=spara['peatK'])
             
             Nleach = Nleach + Nstot - Ns
             Pleach = Pleach + Pstot - Ps

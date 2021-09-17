@@ -87,7 +87,8 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
     spara ={ 
 
         'jaali':{
-        'species': 'Pine', 'sfc':sfc, 'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
+        'species': 'Pine', 'sfc':sfc, 'sfc_specification': 2,
+        'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
         'nLyrs':30, 'dzLyr': 0.05, 'L': sarkaSim, 'n':n, 
         'ditch depth west': [-0.3,-0.5,-0.7,-0.9,-1.1],   #nLyrs kerrosten lkm, dzLyr kerroksen paksuus m, saran levys m, n laskentasolmulen lukumäärä, ditch depth pjan syvyys simuloinnin alussa m  
         'ditch depth east': [-0.3,-0.5,-0.7,-0.9,-1.1],
@@ -113,7 +114,8 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
 
 
         'develop':{
-        'species': 'Pine', 'sfc':sfc, 'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
+        'species': 'Pine', 'sfc':sfc, 'sfc_specification': 2,
+        'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
         'nLyrs':30, 'dzLyr': 0.05, 'L': sarkaSim, 'n':n, 
         'ditch depth west': [ddwest],   #nLyrs kerrosten lkm, dzLyr kerroksen paksuus m, saran levys m, n laskentasolmulen lukumäärä, ditch depth pjan syvyys simuloinnin alussa m  
         'ditch depth east': [ddeast],
@@ -137,7 +139,8 @@ def get_susi_para(wlocation=None, peat=None, photosite='All data', folderName=No
             },
 
         'develop_scens':{
-        'species': 'Pine', 'sfc':sfc, 'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
+        'species': 'Pine', 'sfc':sfc, 'sfc_specification': 2,
+        'hdom':hdomSim, 'vol':volSim, 'age':ageSim, 'smc': 'Peatland',
         'nLyrs':30, 'dzLyr': 0.05, 'L': sarkaSim, 'n':n, 
         'ditch depth west': [-0.3,-0.9],   #nLyrs kerrosten lkm, dzLyr kerroksen paksuus m, saran levys m, n laskentasolmulen lukumäärä, ditch depth pjan syvyys simuloinnin alussa m  
         'ditch depth east': [-0.3,-0.9],
