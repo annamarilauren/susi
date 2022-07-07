@@ -49,7 +49,8 @@ wpara, cpara, org_para, spara, outpara, photopara = get_susi_para(wlocation = 'u
                                                                   n = n)
 
 v_ini, v, iv5, cbt, dcbt, cb, dcb, w, dw, logs, pulp, dv, dlogs, dpulp, yrs, bmgr, \
-    Nleach, Pleach, Kleach, DOCleach, runoff = run_susi(forc, wpara, cpara,
+    Nleach, Pleach, Kleach, DOCleach, runoff, \
+    nrelease, prelease, krelease, ch4release = run_susi(forc, wpara, cpara,
                                                         org_para, spara, outpara,
                                                         photopara, start_yr, end_yr,
                                                         wlocation = 'undefined',
